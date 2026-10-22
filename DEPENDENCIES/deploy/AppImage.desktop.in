@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name={asdf:system-long-name asdf:system-name}
+Comment={asdf:system-description}
+Icon=icon
+Exec=AppRun
+Categories=Development

@@ -1,0 +1,53 @@
+(in-package #:org.shirakumo.deploy)
+
+(defvar *macos-info-plist-template* (merge-pathnames "Info.plist.in" *here*))
+(defvar *macos-app-icon* (merge-pathnames "AppIcon.icns" *here*))
+
+(defclass macos-app-deploy-op (deploy-op)
+  ((bundle-path :initarg :bundle-path :initform NIL :accessor bundle-path)))
+
+(defun bundle-name (system)
+  (or (asdf:system-long-name system)
+      (asdf:component-name system)))
+
+(defmethod asdf:output-files ((o macos-app-deploy-op) (c asdf:system))
+  (let* ((base (asdf:system-relative-pathname c "bin/"))
+         (bundle-dir (merge-pathnames (format NIL "~a.app/" (bundle-name c)) base))
+         (macos-dir (merge-pathnames "Contents/MacOS/" bundle-dir))
+         (core-file (merge-pathnames "sbcl.core" macos-dir)))
+    (setf (bundle-path o) bundle-dir)
+    (setf (output-file o) core-file)
+    (values (list core-file) T)))
+
+(defmethod output-data-directory ((op macos-app-deploy-op))
+  (merge-pathnames "Contents/Frameworks/" (bundle-path op)))
+
+(defmethod deploy :before ((o macos-app-deploy-op) &key &allow-other-keys)
+  (setf *base-location* #p"../../../")
+  ;; Dump a core file, not a standalone executable.
+  (pushnew :deploy-image *features*)
+  (status 0 "Preparing macOS app bundle.")
+  (let* ((bundle-name (bundle-name (system o)))
+         (contents-dir (merge-pathnames "Contents/" (bundle-path o)))
+         (macos-dir (merge-pathnames "MacOS/" contents-dir))
+         (resources-dir (merge-pathnames "Resources/" contents-dir)))
+    (dolist (dir (list macos-dir resources-dir))
+      (ensure-directories-exist (merge-pathnames "dummy" dir)))
+    (let ((runtime-target (make-pathname :name bundle-name :type NIL :defaults macos-dir)))
+      (status 1 "Copying SBCL runtime to ~a" runtime-target)
+      (copy-file sb-ext:*runtime-pathname* runtime-target)
+      (sb-posix:chmod runtime-target #o755))
+    (let ((info-plist-file (merge-pathnames "Info.plist" contents-dir)))
+      (status 1 "Generating ~a" info-plist-file)
+      (create-template (system o) *macos-info-plist-template* info-plist-file))
+    (let ((icon-target (make-pathname :name bundle-name :type "icns" :defaults resources-dir)))
+      (when (probe-file *macos-app-icon*)
+        (status 1 "Copying icon ~a" *macos-app-icon*)
+        (copy-file *macos-app-icon* icon-target)))))
+
+;; hook ASDF
+(flet ((export! (symbol package)
+         (import symbol package)
+         (export symbol package)))
+  (export! 'macos-app-deploy-op :asdf/bundle)
+  (export! 'macos-app-deploy-op :asdf))

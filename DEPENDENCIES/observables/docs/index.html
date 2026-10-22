@@ -1,0 +1,265 @@
+<!DOCTYPE html> <html lang="EN"> <head> <meta charset="utf-8"> <title>Observables</title> <style>html body{margin:0 auto 0 auto;padding:20px;max-width:1024px;font-family:sans-serif;font-size:14pt;overflow-y:scroll;}html body a{text-decoration:none;}html body a[href]{color:#0055AA;}html body a[href]:hover{color:#0088EE;}html body pre{background:#FAFAFA;border:1px solid #DDDDDD;padding:0.75em;overflow-x:auto;}html body pre >code a[href]{color:#223388;}article.project h1{font-size:1.7em;}article.project h1,article.project h2,article.project h3,article.project h4,article.project h5,article.project h6{margin:0.2em 0 0.1em 0;text-indent:1em;}article.project >header{text-align:center;}article.project >header img.logo{display:block;margin:auto;max-height:170px;}article.project >header h1{display:inline-block;text-indent:0;font-size:2.5em;}article.project >header .version{vertical-align:bottom;}article.project >header .languages{margin-top:-0.5em;text-transform:capitalize;}article.project >header .description{margin:0;}article.project >header .pages{margin-top:0.5em;font-size:1.2em;text-transform:capitalize;}article.project >header .pages a{display:inline-block;padding:0 0.2em;}article.project >section{margin:1em 0 1em 0;}article.project >section img{max-width:100%;}article.project #index >ul{list-style:none;margin:0;padding:0;}article.project .row label{display:inline-block;min-width:8em;}article.project #system .row{display:flex;}article.project #system #dependencies{display:inline;margin:0;padding:0;}article.project #system #dependencies li{display:inline;padding:0 0.2em;}article.project #system #author label{vertical-align:top;}article.project #system #author ul{display:inline-block;margin:0;padding:0;list-style:none;}article.project #toc nav>*{margin-left:1em;display:block;}article.definition{margin:1em 0 0 0;}article.definition >header h1,article.definition >header h2,article.definition >header h3,article.definition >header h4,article.definition >header h5,article.definition >header h6{text-indent:0;display:inline-block;}article.definition >header ul{display:inline-block;list-style:none;margin:0;padding:0;}article.definition >header ul li{display:inline-block;padding:0 0.2em 0 0;}article.definition >header .visibility{display:none;}article.definition >header .visibility,article.definition >header .type{text-transform:lowercase;}article.definition >header .source-link{visibility:hidden;float:right;}article.definition >header .source-link:after{visibility:visible;content:"[SRC]";}article.definition .docstring{margin:0 0 0 1em;}article.definition .docstring pre{font-size:0.8em;white-space:pre-wrap;}.definition.package >header ul.nicknames{display:inline-block;list-style:none;margin:0;padding:0 0 0 1em;}.definition.package >header ul.nicknames li{display:inline;}.definition.package >header ul.nicknames:before{content:"(";}.definition.package >header ul.nicknames:after{content:")";}.definition.package ul.definitions{margin:0;list-style:none;padding:0 0 0 0.5em;}.definition.callable >header .name:before,.definition.type >header .name:before{content:"(";font-weight:normal;}.definition.callable >header .arguments:after,.definition.type >header .arguments:after{content:")";}.definition.callable >header .arguments .arguments:before,.definition.type >header .arguments .arguments:before{content:"(";}.definition.callable >header .arguments .argument,.definition.type >header .arguments .argument{padding:0;}.definition.callable >header .arguments .argument.lambda-list-keyword,.definition.type >header .arguments .argument.lambda-list-keyword{color:#991155;}.definition li>mark{background:none;border-left:0.3em solid #0088EE;padding-left:0.3em;display:block;}@media (min-width: 1300px){html body{padding-left:16em;}article.project #toc{margin:0;position:fixed;left:0;top:0;bottom:0;width:15em;overflow-y:auto;background:#F0F0F0;border-right:1px solid #A0A0A0;}}</style> </head> <body> <article class="project"> <header>   <h1>observables</h1>   <span class="version">1.0.0</span>    <p class="description">A library for defining activity/changes on objects that can be observed by remote trigger functions</p>   </header> <section id="toc"> <h2>Table of Contents</h2> <nav> <a href="#project">Top</a>  <a href="#documentation">Documentation</a> <nav> <a href="#about observables">About Observables</a>  <a href="#how to">How To</a> </nav>  <a href="#system">System</a>  <a href="#system">Packages</a> <nav> <a href="#PACKAGE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES">ORG.SHIRAKUMO.ALLOY.OBSERVABLES</a> </nav>  </nav> </section>  <section id="documentation"><article><h1 id="about observables">About Observables</h1><p>This is a library for defining activities/changes/triggers/notifications/events on objects that can be observed by remote functions.</p><h2 id="how to">How To</h2><p>The basic units to understand are the the <strong>observable</strong>, the <strong>activity</strong>, and the <strong>observer</strong>. An <code><a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">observable</a></code> is any object on which observations can be made. An <code><a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">activity</a></code> is a description of a specific &quot;endpoint&quot; on an observable object that can be notified. This is usually just a name and an argument list. An observer is a function that is invoked when the activity it listens on is notified. Observers can also define a &quot;specializer&quot; which is a set of type tests for each argument that must be fulfilled for the observer function to be invoked.</p><p>Activities are defined globally on classes using <code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITY" class="xref">define-activity</a></code> or <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY" class="xref">register-activity</a></code>. To get information on available activities you can use <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-ACTIVITIES" class="xref">list-activities</a></code> or <code><a href="http://l1sp.org/cl/describe" class="xref">describe</a></code> on an <code><a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">observable</a></code> instance.</p><p>Note however that you can still observe activities that were not &quot;officially&quot; registered, and an observable can still notify in the same way. Basically activity registration should be seen as the user interface specification, rather than a hard requirement and prerequisite for the core notification mechanism to work.</p><p>To define an observer, you can use <code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AON" class="xref">on</a></code> or <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE" class="xref">observe</a></code> to define them dynamically on instances, or <code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVATION" class="xref">define-observation</a></code> to define them globally on all instances of specified classes.</p><p>In order to actually cause an observer to be invoked, the activity it listens on needs to notified via <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ANOTIFY-OBSERVERS" class="xref">notify-observers</a></code>. This can be done manually as appropriate, or automatically via functions defined by <code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVABLE" class="xref">define-observable</a></code>.</p><p>A simple example of this is the <code><a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE-OBJECT" class="xref">observable-object</a></code> class, which will notify the <code><a href="http://l1sp.org/cl/slot-value" class="xref">slot-value</a></code> activity whenever one of its slots is changed. This also happens for subclasses, so if you ever want to ensure that all of your slots can be observed, this is a very simple way to do so.</p><code style="display:block" class="code-block" data-language="common lisp"><pre>(defclass my-example (observables:observable-object)
+  (foo bar))
+
+(define-observation unspecialized (value object slot-name)
+  (declare (observables:observe slot-value my-example))
+  (format T &quot;~&amp;Hello! Got: ~a ~a ~a&quot; value object slot-name))
+
+(define-observation specialized (value object slot-name)
+  (declare (observables:observe (slot-value T T (eql foo)) my-example))
+  (format T &quot;~&amp;Goodbye! Got: ~a ~a ~a&quot; value object slot-name))</pre></code><p>When you now run <code>(setf (slot-value (make-instance 'my-example) 'foo) 1)</code> you'll both get a &quot;Hello!&quot; and &quot;Goodbye!&quot; message. But if you set the <code>bar</code> slot instead, the specializer prevents the specialised observer from running.</p><p>Often times however you'll want to observe an activity on a specific object, rather than all instances of a class, or retain lexical information of some kind in your observer function. For those cases there's the <code><a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AON" class="xref">on</a></code> macro and the <code><a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE" class="xref">observe</a></code> function it expands to.</p><code style="display:block" class="code-block" data-language="common lisp"><pre>(let ((instance (make-instance 'observables:observable)))
+  (observables:on activate (instance)
+    (print :woah))
+  (observables:notify-observers 'activate instance))</pre></code><p>This example also illustrates an important point: while it is good practise to formally define and register activities, you can notify on arbitrary activity names, and observe arbitrary activity names, too. Such activities can be used for internals that aren't part of an externally visible interface, or simply for quick prototyping.</p></article></section>    <section id="system"> <h2>System Information</h2>  <div class="row"> <label for="version">Version:</label> <a id="version">1.0.0</a> </div>   <div class="row"> <label for="dependencies">Dependencies:</label> <ul id="dependencies"><li><a class="external" href="https://shinmera.com/docs/documentation-utils/">documentation-utils</a></li><li><a class="external">closer-mop</a></li></ul> </div>   <div class="row" id="author"> <label for="author">Author:</label> <a href="mailto:shinmera@tymoon.eu">Yukari Hafner</a> </div>   <div class="row"> <label for="license">License:</label> <a id="license" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/LICENSE">zlib</a> </div>   <div class="row"> <label for="homepage">Homepage:</label> <a id="homepage" href="https://shinmera.com/docs/observables/">https://shinmera.com/docs/observables/</a> </div>   <div class="row"> <label for="bug-tracker">Bug Tracker:</label> <a id="bug-tracker" href="https://shinmera.com/project/observables/issues">https://shinmera.com/project/observables/issues</a> </div>   <div class="row"> <label for="sources">Sources:</label> <a id="sources" href="https://shinmera.com/project/observables.git">https://shinmera.com/project/observables.git</a> </div>  </section>    <section id="index"> <h2>Definition Index</h2> <ul> <li> <article class="definition package" id="PACKAGE ORG.SHIRAKUMO.ALLOY.OBSERVABLES"> <header> <h3> <a href="#PACKAGE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES">ORG.SHIRAKUMO.ALLOY.OBSERVABLES</a> </h3> <ul class="nicknames"></ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> <ul class="definitions"> <li> <article class="definition class" id="CLASS ORG.SHIRAKUMO.ALLOY.OBSERVABLES:OBSERVABLE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CLASS</span> <h4 class="name"> <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE">OBSERVABLE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L3">Source</a>  </header> <div class="docstring"><pre>Representation of an object that can be observed.
+
+An observable keeps a list of observers for each activity that it
+presents. An observer in this context is a function that will be
+invoked with a defined set of arguments when the activity is
+notified.
+
+Every observer can also define an optional &quot;specialization&quot; which is
+a type test on the arguments. If the specialization test fails, the
+observer function will not be invoked.
+
+Note that even if an activity is not registered officially (and thus
+not listed in LIST-ACTIVITIES), observers may still define an
+observation on arbitrary activity names. Activities therefore are more
+meant as an official documentation of an observable event than a
+defined interface.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-ACTIVITIES" class="xref">LIST-ACTIVITIES</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AFIND-ACTIVITY" class="xref">FIND-ACTIVITY</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY" class="xref">REGISTER-ACTIVITY</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE" class="xref">OBSERVE</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-OBSERVERS" class="xref">LIST-OBSERVERS</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ANOTIFY-OBSERVERS" class="xref">NOTIFY-OBSERVERS</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVERS" class="xref">REMOVE-OBSERVERS</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVER" class="xref">REMOVE-OBSERVER</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AON" class="xref">ON</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVATION" class="xref">DEFINE-OBSERVATION</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVABLE" class="xref">DEFINE-OBSERVABLE</a></pre></div> </article> </li>  <li> <article class="definition class" id="CLASS ORG.SHIRAKUMO.ALLOY.OBSERVABLES:OBSERVABLE-OBJECT"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CLASS</span> <h4 class="name"> <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE-OBJECT">OBSERVABLE-OBJECT</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/implementation.lisp#L196">Source</a>  </header> <div class="docstring"><pre>Superclass for objects that should have observable slots.
+
+For every slot that is set, the SLOT-VALUE activity is invoked with
+the value, the object, and the slot name, same as the argument order
+on (setf slot-value).
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a></pre></div> </article> </li>  <li> <article class="definition structure" id="STRUCTURE ORG.SHIRAKUMO.ALLOY.OBSERVABLES:ACTIVITY"> <header> <span class="visibility">EXTERNAL</span> <span class="type">STRUCTURE</span> <h4 class="name"> <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY">ACTIVITY</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/implementation.lisp#L28">Source</a>  </header> <div class="docstring"><pre>Representation of an observable activity.
+
+An activity is the definition of an endpoint on an observable object
+that can be observed by an observer function. Often this corresponds
+to a field that changes value, but it can also correspond to other
+events that may take place.
+
+Every activity has a defined argument list that will be passed on to
+the observer function. If the observer function argument list does not
+accept the arguments passed to it, the observation will signal an
+error at runtime.
+
+See <a href="http://l1sp.org/cl/documentation" class="xref">CL:DOCUMENTATION</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-ACTIVITIES" class="xref">LIST-ACTIVITIES</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AFIND-ACTIVITY" class="xref">FIND-ACTIVITY</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY" class="xref">REGISTER-ACTIVITY</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITY" class="xref">DEFINE-ACTIVITY</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:FIND-ACTIVITY"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AFIND-ACTIVITY">FIND-ACTIVITY</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NAME</li>    <li class="argument">OBSERVABLE</li>    <li class="argument lambda-list-keyword">&amp;OPTIONAL</li>    <li class="argument">ERRORP</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L7">Source</a>  </header> <div class="docstring"><pre>Find an activity of the given name.
+
+If ERRORP is true, an error is signalled if no activity of the
+requested name can be found on the observable.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:LIST-ACTIVITIES"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-ACTIVITIES">LIST-ACTIVITIES</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">OBSERVABLE</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L6">Source</a>  </header> <div class="docstring"><pre>Return a list of ACTIVITY objects registered with the observable.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:LIST-OBSERVERS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ALIST-OBSERVERS">LIST-OBSERVERS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L12">Source</a>  </header> <div class="docstring"><pre>List the names of all observers on the given activity.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:MAKE-OBSERVABLE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AMAKE-OBSERVABLE">MAKE-OBSERVABLE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">THING</li>    <li class="argument">ARGLIST</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">ACTIVITY</li>    <li class="argument">CLASS</li>    <li class="argument">INVOKE</li>    <li class="argument lambda-list-keyword">&amp;ALLOW-OTHER-KEYS</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L14">Source</a>  </header> <div class="docstring"><pre>Turn the given thing into something observable.
+
+THING is most often a function or name for a function. In that case,
+the function will be instrumented to notify an activity using one of
+the arguments to the function as the OBSERVABLE object. The name of
+the activity must be passed as a keyword argument. Additionally, you
+may pass :CLASS that will specify the class of observable on which the
+activity is registered, and on which the function will specialise.
+:INVOKE may be used with either :AFTER or :BEFORE to specify whether
+the activity should be notified after or before the primary function
+being instrumented runs.
+
+If THING is a symbol naming a function, then that same name is used as
+the default :ACTIVITY argument.
+
+LAMBDA-LIST must be the lambda-list of the function, and one of the
+required arguments in the list must be named OBSERVABLE, to identify
+the observable object on which to notify the activity. All other
+arguments of the lambda-list are passed on to the activity
+notification as arguments.
+
+Note that you can usually &quot;manually&quot; achieve the same effect as this
+function by using REGISTER-ACTIVITY and NOTIFY-OBSERVERS as
+appropriate.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY" class="xref">REGISTER-ACTIVITY</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ANOTIFY-OBSERVERS" class="xref">NOTIFY-OBSERVERS</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:NOTIFY-OBSERVERS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ANOTIFY-OBSERVERS">NOTIFY-OBSERVERS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>    <li class="argument lambda-list-keyword">&amp;REST</li>    <li class="argument">ARGS</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L13">Source</a>  </header> <div class="docstring"><pre>Notify the observers of the given activity.
+
+ACTIVITY   --- The name of the activity to notify, or &quot;trigger&quot;.
+OBSERVABLE --- The observable object that observers of the activity
+               need to be registered with.
+ARGS       --- The arguments to pass along with the activity. Note
+               that those must match the arglist defined on the
+               activity, otherwise this will fail and signal an error.
+
+Does not return anything useful.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:OBSERVE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE">OBSERVE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>    <li class="argument">OBSERVER</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">NAME</li>    <li class="argument">SPECIALIZE</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L9">Source</a>  </header> <div class="docstring"><pre>Register an observer on an activity.
+
+ACTIVITY          --- The name of the activity to observe.
+OBSERVABLE        --- The object to observe.
+OBSERVER-FUNCTION --- The function that will be invoked when the
+                      activity is notified.
+NAME              --- The name of the observer. Has to be unique.
+SPECIALIZE        --- An optional list of type tests for each argument
+                      of the activity. If not given, no specialisation
+                      test is used and the function will be invoked on
+                      every activity notification.
+
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AON" class="xref">ON</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVATION" class="xref">DEFINE-OBSERVATION</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:REGISTER-ACTIVITY"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY">REGISTER-ACTIVITY</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NAME</li>    <li class="argument">OBSERVABLE</li>    <li class="argument">ARGLIST</li>    <li class="argument lambda-list-keyword">&amp;KEY</li>    <li class="argument">DOCUMENTATION</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L8">Source</a>  </header> <div class="docstring"><pre>Register a new activity on the given observable.
+
+NAME          --- The name of the activity. The name is unique on the
+                  observable, and registering twice will update the
+                  existing activity.
+ARGS          --- The list of arguments passed to the observer when the
+                  activity is notified.
+DOCUMENTATION --- An optional documentation string to give user-facing
+                  information on what the activity is for and under
+                  which circumstances it is notified.
+
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a>
+See <a href="#STRUCTURE%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AACTIVITY" class="xref">ACTIVITY (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:REMOVE-OBSERVER"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVER">REMOVE-OBSERVER</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>    <li class="argument">NAME</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L11">Source</a>  </header> <div class="docstring"><pre>Remove a specific observer by name.
+
+If the observer does not exist, nothing is done.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVERS" class="xref">REMOVE-OBSERVERS</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a></pre></div> </article> </li>  <li> <article class="definition generic-function callable" id="GENERIC-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:REMOVE-OBSERVERS"> <header> <span class="visibility">EXTERNAL</span> <span class="type">GENERIC-FUNCTION</span> <h4 class="name"> <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVERS">REMOVE-OBSERVERS</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L10">Source</a>  </header> <div class="docstring"><pre>Remove observers from an activity.
+
+If ACTIVITY is T, all observers from all activities are removed.
+Otherwise all observers on the given activity are removed.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREMOVE-OBSERVER" class="xref">REMOVE-OBSERVER</a>
+See <a href="#CLASS%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVABLE" class="xref">OBSERVABLE (type)</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:DEFINE-ACTIVITIES"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITIES">DEFINE-ACTIVITIES</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">OBSERVABLE</li>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">ACTIVITIES</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L21">Source</a>  </header> <div class="docstring"><pre>Shorthand to define multiple activities on a class.
+
+This is another convenience macro, simply filling in the same
+OBSERVABLE on all body clauses. Each body clause should hold the
+activity name, the argument list, and the other options to pass along
+as the body.
+
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITY" class="xref">DEFINE-ACTIVITY</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:DEFINE-ACTIVITY"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITY">DEFINE-ACTIVITY</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <li class="argument">OBSERVABLE</li>    <li class="argument">ARGS</li>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">BODY</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L16">Source</a>  </header> <div class="docstring"><pre>Shorthand to define an activity on a class.
+
+This is a convenience macro for invoking REGISTER-ACTIVITY on the
+class named as the OBSERVABLE. BODY can be a plist of extra arguments
+to pass on, optionally starting with a string that provides the
+:DOCUMENTATION argument.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AREGISTER-ACTIVITY" class="xref">REGISTER-ACTIVITY</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:DEFINE-OBSERVABLE"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVABLE">DEFINE-OBSERVABLE</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NAME</li>    <li class="argument">LAMBDA-LIST</li>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">OPTIONS</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L81">Source</a>  </header> <div class="docstring"><pre>Shorthand to define an observable generic function.
+
+This is a shorthand for DEFGENERIC combined with MAKE-OBSERVABLE.
+Aside from the standard DEFGENERIC options, you can also provide
+:ACTIVITY, :CLASS, and :INVOKE which will be provided to
+MAKE-OBSERVABLE instead. The :DOCUMENTATION option will also be
+forwarded to the activity.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AMAKE-OBSERVABLE" class="xref">MAKE-OBSERVABLE</a>
+See <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-ACTIVITY" class="xref">DEFINE-ACTIVITY</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:DEFINE-OBSERVATION"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3ADEFINE-OBSERVATION">DEFINE-OBSERVATION</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">NAME</li>    <li class="argument">ARGS</li>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">BODY</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L61">Source</a>  </header> <div class="docstring"><pre>Shorthand to define a global observation function.
+
+This will define a function of NAME, ARGS, and BODY. BODY may contain
+special declarations of this form:
+
+  (DECLARE (OBSERVE activity class...))
+
+Where ACTIVITY is the name of the activity to observe on every
+instance of CLASS. Essentially for every such declaration an OBSERVE
+form will be emitted as well.
+
+ACTIVITY can either be the name of an activity, or a list composed of
+the name of the activity and the argument specializers to use:
+
+  (DECLARE (OBSERVE (activity specialization...) class...))
+
+Unlike ON, this will also check your argument list on every activity
+you observe for whether they match, and whether the activity is even
+registered. If either do not, a warning is signalled.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AFIND-ACTIVITY" class="xref">FIND-ACTIVITY</a>
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE" class="xref">OBSERVE</a></pre></div> </article> </li>  <li> <article class="definition macro callable" id="MACRO-FUNCTION ORG.SHIRAKUMO.ALLOY.OBSERVABLES:ON"> <header> <span class="visibility">EXTERNAL</span> <span class="type">MACRO</span> <h4 class="name"> <a href="#MACRO-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AON">ON</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">ACTIVITY</li>    <ul class="arguments"> <li class="argument">OBSERVABLE</li>  <li class="argument lambda-list-keyword">&amp;REST</li>  <li class="argument">ARGS</li> </ul>    <li class="argument lambda-list-keyword">&amp;BODY</li>    <li class="argument">BODY</li>  </ul>  <a class="source-link" href="https://shinmera.com/project/observables/src/commit/eaedda246511900fa8b2434fb0a14595589a57ef/protocol.lisp#L37">Source</a>  </header> <div class="docstring"><pre>Shorthand to conveniently OBSERVE an activity dynamically.
+
+ACTIVITY   --- The name of the activity to observe.
+OBSERVABLE --- The observable object to place the observation on.
+ARGS       --- The arguments list to bind the activity arguments with.
+               Each argument can be one of the following:
+  (EQL value) --- Ignoring the argument and specializing it to be
+                  equal to the (evaluated) VALUE.
+  (name type) --- Bind the argument value to NAME and specialize it to
+                  match the (unevaluated) TYPE.
+  name        --- Bind the argument value to NAME. This is equivalent
+                  to (name T).
+BODY       --- The body forms to execute when the activity is
+               notified. Additionally a special declaration is
+               available: (declare (name ..)) to define the name of
+               the observer.
+
+See <a href="#GENERIC-FUNCTION%20ORG.SHIRAKUMO.ALLOY.OBSERVABLES%3AOBSERVE" class="xref">OBSERVE</a></pre></div> </article> </li> </ul> </article> </li> </ul> </section>  </article> <script>window.addEventListener("DOMContentLoaded", function(){
+    var unmarkElement = function(el){
+        if(el.tagName === "mark" || el.tagName === "MARK"){
+            [].forEach.call(el.childNodes, function(child){
+                el.parentNode.insertBefore(child, el);
+            });
+            el.parentNode.removeChild(el);
+        }else if(el.parentNode.tagName === "mark"){
+            return unmarkElement(el.parentNode);
+        }
+        return null;
+    }
+
+    var unmarkAll = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("mark"), unmarkElement);
+    }
+    
+    var markElement = function(el){
+        if(el.parentNode.tagName === "mark" || el.parentNode.tagName === "MARK"){
+            return el.parentNode;
+        } else {
+            unmarkAll();
+            var marked = document.createElement("mark");
+            el.parentNode.insertBefore(marked, el);
+            marked.appendChild(el);
+            return marked;
+        }
+    }
+
+    var markFragmented = function(){
+        if(window.location.hash){
+            var el = document.getElementById(decodeURIComponent(window.location.hash.substr(1)));
+            if(el) markElement(el);
+        }
+    }
+
+    var registerXrefLink = function(link){
+        var el = document.getElementById(decodeURIComponent(link.getAttribute("href").substr(1)));
+        if(el){
+            link.addEventListener("click", function(){
+                markElement(el);
+            });
+        }
+    }
+
+    var registerXrefLinks = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("a.xref"), registerXrefLink);
+    }
+
+    markFragmented();
+    registerXrefLinks();
+}); </script> </body> </html> 

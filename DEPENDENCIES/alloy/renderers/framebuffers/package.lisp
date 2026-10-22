@@ -1,0 +1,20 @@
+(defpackage #:org.shirakumo.alloy.renderers.framebuffers
+  (:use #:cl)
+  (:local-nicknames
+   (#:alloy #:org.shirakumo.alloy)
+   (#:simple #:org.shirakumo.alloy.renderers.simple)
+   (#:window #:org.shirakumo.alloy.windowing)
+   (#:animation #:org.shirakumo.alloy.animation)
+   (#:chroma #:org.shirakumo.alloy.chroma)
+   (#:colors #:org.shirakumo.alloy.chroma.colors)
+   (#:fb #:org.shirakumo.framebuffers)
+   (#:raster #:org.shirakumo.raster))
+  (:export
+   #:renderer
+   #:cursor
+   #:monitor
+   #:screen
+   #:window
+   #:with-screen))
+
+(push :alloy-framebuffers *features*)

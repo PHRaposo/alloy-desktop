@@ -1,0 +1,192 @@
+(in-package #:cl-user)
+(defpackage #:3b-bmfont-xml
+  (:use :cl #:3b-bmfont-common)
+  (:export #:read-bmfont-xml #:write-bmfont-xml))
+(in-package #:3b-bmfont-xml)
+
+;;; writer/translator for bmfont xml format
+#++
+(ql:quickload '3b-bmfont/xml)
+
+(defvar *font*)
+(defclass bmfont-xml (sax:default-handler)
+  ((f :initform nil :accessor f)))
+
+(defmethod sax:start-document ((h bmfont-xml))
+  (setf *font*
+        (list :info nil :commmon nil :pages nil :chars nil :kerning nil :distance-field nil)))
+
+
+(defmethod sax:start-element ((h bmfont-xml) namespace local-name qname attributes)
+  (let* ((k (make-keyword local-name))
+         (atts (filter-plist
+                (loop for a in attributes
+                      collect (make-keyword (sax:attribute-local-name a))
+                      collect (sax:attribute-value a))
+                (getf *filters* k '(:count parse-integer)))))
+    (ecase k
+      ((:font))
+      ((:chars :pages :kernings)
+       (assert (not (getf *font* k)))
+       (setf (getf *font* k) (make-array (getf atts :count 1)
+                                         :fill-pointer 0 :initial-element nil
+                                         :adjustable (not (getf atts :count)))))
+      ((:info :common :distance-field)
+       ;; should be singleton nodes
+       (assert (not (getf *font* k)))
+       (setf (getf *font* k) atts))
+      ((:page :char :kerning)
+       ;; add to corresponding array
+       (vector-push-extend
+        atts
+        (getf *font*
+              (ecase k (:char :chars) (:page :pages) (:kerning :kernings))))))))
+
+(defmethod sax:end-document ((b bmfont-xml))
+  (let ((info (getf *font* :info))
+        (chars (getf *font* :chars)))
+    (setf (f b)
+          (apply #'make-instance 'bmfont
+                 (append info  (getf *font* :common))))
+    (setf (chars (f b))
+          (3b-bmfont::make-chars-hash info chars))
+    (setf (pages(f b)) (getf *font* :pages))
+    (setf (distance-field (f b)) (getf *font* :distance-field))
+    (setf (kernings (f b))
+          (3b-bmfont::make-kerning-hash info (chars (f b))
+                                        (getf *font* :kernings)))))
+
+(defun read-bmfont-xml (stream)
+  (flet ((resolver (pubid sysid)
+           (declare (ignore pubid sysid))
+           (flexi-streams:make-in-memory-input-stream nil)))
+    (let* ((*font* nil)
+           (b (make-instance 'bmfont-xml)))
+      (if (typep stream 'flex:in-memory-input-stream)
+          (cxml:parse
+           stream
+           b
+           :entity-resolver #'resolver)
+          (cxml:parse-file
+           stream
+           b
+           :entity-resolver #'resolver))
+      (update-font-properties (f b)))))
+
+(defun write-bmfont-xml (f stream)
+  (let ((ac #(:glyph :outline :glyph+outline :zero :one))
+        (round nil))
+    (cxml:with-xml-output (cxml:make-octet-stream-sink stream
+                                                       :indentation 4
+                                                       :canonical nil)
+      (flet ((b (x)
+               (if x 1 0))
+             (f (x)
+               (cond
+                 ((integerp x)
+                  x)
+                 ((= x (round x))
+                  (round x))
+                 (round
+                  (round x))
+                 (t
+                  (with-simple-restart (continue
+                                        "Round non-integral values")
+                    (error "float values not supported in text and xml"))
+                  (setf round t)
+                  (round x)))))
+        (cxml:with-element "font"
+          (cxml:with-element "info"
+            (cxml:attribute "face" (face f))
+            (cxml:attribute "size" (f (size f)))
+            (cxml:attribute "bold" (b (bold f)))
+            (cxml:attribute "italic" (b (italic f)))
+            (cxml:attribute "charset" (charset f))
+            (cxml:attribute "unicode" (b (unicode f)))
+            (cxml:attribute "stretchH" (stretch-h f))
+            (cxml:attribute "smooth" (b (smooth f)))
+            (cxml:attribute "aa" (b (aa f)))
+            (cxml:attribute "padding"
+                            (format nil "~{~a~^,~}" (mapcar #'f (padding f))))
+            (cxml:attribute "spacing"
+                            (format nil "~{~a~^,~}" (mapcar #'f (spacing f)))))
+          (cxml:with-element "common"
+            (cxml:attribute "lineHeight" (f (line-height f)))
+            (cxml:attribute "base" (f (base f)))
+            (cxml:attribute "scaleW" (f (scale-w f)))
+            (cxml:attribute "scaleH" (f (scale-h f)))
+            (cxml:attribute "pages" (length (pages f)))
+            (cxml:attribute "packed" (b (packed f)))
+            (cxml:attribute "alphaChnl"
+                            (position (alpha-chnl f) ac))
+            (cxml:attribute "redChnl"
+                            (position (red-chnl f) ac))
+            (cxml:attribute "greenChnl"
+                            (position (green-chnl f) ac))
+            (cxml:attribute "blueChnl"
+                            (position (blue-chnl f) ac)))
+          (cxml:with-element "pages"
+            (loop for p across (pages f)
+                  for i from 0
+                  do (cxml:with-element "page"
+                       ;; not sure if ID needs to be equal to position in
+                       ;; list or not? use specified value if any
+                       (cxml:attribute "id" (or (getf p :id) i))
+                       (cxml:attribute "file" (getf p :file)))))
+          ;; non-standard extension
+          (when (distance-field f)
+            (cxml:with-element "distanceField"
+              (cxml:attribute "fieldType"
+                              (string-downcase
+                               (getf (distance-field f) :field-type)))
+              (cxml:attribute "distanceRange"
+                              (f (getf (distance-field f) :distance-range)))))
+          (cxml:with-element "chars"
+            (cxml:attribute "count" (hash-table-count (chars f)))
+            (loop for c in (sort (alexandria:hash-table-values
+                                  (chars f))
+                                 '<
+                                 :key (lambda (c) (char-id c)))
+                  do (cxml:with-element "char"
+                       (cxml:attribute "id" (char-id c))
+                       ;; non-standard
+                       (cxml:attribute "index" (glyph-index c))
+                       ;; non-standard
+                       (cxml:attribute "char" (when (glyph-char c)
+                                                (string (glyph-char c))))
+                       (cxml:attribute "width" (f (glyph-width c)))
+                       (cxml:attribute "height" (f (glyph-height c)))
+                       (cxml:attribute "xoffset" (f (glyph-xoffset c)))
+                       (cxml:attribute "yoffset" (f (glyph-yoffset c)))
+                       (cxml:attribute "xadvance" (f (glyph-xadvance c)))
+                       (cxml:attribute "chnl" (glyph-chnl c))
+                       (cxml:attribute "x" (f (glyph-x c)))
+                       (cxml:attribute "y" (f (glyph-y c)))
+                       (cxml:attribute "page" (glyph-page c))
+                       ;; non-standard
+                       (cxml:attribute "letter" (when (glyph-letter c)
+                                                  (string (glyph-letter c)))))))
+          (cxml:with-element "kernings"
+            (cxml:attribute "count" (hash-table-count (kernings f)))
+            (flet ((id (x)
+                     (char-id (gethash x (chars f)) x)))
+              (loop
+                for (kidx . a) in (sort (alexandria:hash-table-alist
+                                         (kernings f))
+                                        '< :key 'car)
+                for (c1 . c2) = (kerning-index-characters kidx)
+                do (cxml:with-element "kerning"
+                     (cxml:attribute "first" (id c1))
+                     (cxml:attribute "second" (id c2))
+                     (cxml:attribute "amount" (f a)))))))))))
+
+#++
+(with-open-file (s2 "/tmp/r2.fnt" :direction :output
+                                  :if-does-not-exist :create
+                                  :if-exists :supersede
+                                  :element-type '(unsigned-byte 8))
+  (let ((f (with-open-file (s "/tmp/Roboto-Regular.fnt")
+             (read-bmfont-xml s))))
+    (write-bmfont-xml f s2)
+    f))
+

@@ -1,0 +1,218 @@
+{
+  "sha": "4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+  "node_id": "C_kwDOBIlbj9oAKDRmODQ1ZGM5Nzk3MmM3MmNhZDY4NGNjMjJjN2JmOTZlNmQ1MzE5YTY",
+  "commit": {
+    "author": {
+      "name": "Jon Leech",
+      "email": "oddhack@sonic.net",
+      "date": "2024-08-15T14:04:09Z"
+    },
+    "committer": {
+      "name": "Jon Leech",
+      "email": "oddhack@sonic.net",
+      "date": "2024-08-15T14:04:09Z"
+    },
+    "message": "Regenerate headers after \\!630",
+    "tree": {
+      "sha": "d61271135a5cd7ea417b7895e48d4b2ee955d004",
+      "url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/git/trees/d61271135a5cd7ea417b7895e48d4b2ee955d004"
+    },
+    "url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/git/commits/4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null
+    }
+  },
+  "url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/commits/4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+  "html_url": "https://github.com/KhronosGroup/OpenGL-Registry/commit/4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+  "comments_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/commits/4f845dc97972c72cad684cc22c7bf96e6d5319a6/comments",
+  "author": {
+    "login": "oddhack",
+    "id": 4693344,
+    "node_id": "MDQ6VXNlcjQ2OTMzNDQ=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/4693344?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/oddhack",
+    "html_url": "https://github.com/oddhack",
+    "followers_url": "https://api.github.com/users/oddhack/followers",
+    "following_url": "https://api.github.com/users/oddhack/following{/other_user}",
+    "gists_url": "https://api.github.com/users/oddhack/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/oddhack/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/oddhack/subscriptions",
+    "organizations_url": "https://api.github.com/users/oddhack/orgs",
+    "repos_url": "https://api.github.com/users/oddhack/repos",
+    "events_url": "https://api.github.com/users/oddhack/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/oddhack/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "oddhack",
+    "id": 4693344,
+    "node_id": "MDQ6VXNlcjQ2OTMzNDQ=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/4693344?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/oddhack",
+    "html_url": "https://github.com/oddhack",
+    "followers_url": "https://api.github.com/users/oddhack/followers",
+    "following_url": "https://api.github.com/users/oddhack/following{/other_user}",
+    "gists_url": "https://api.github.com/users/oddhack/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/oddhack/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/oddhack/subscriptions",
+    "organizations_url": "https://api.github.com/users/oddhack/orgs",
+    "repos_url": "https://api.github.com/users/oddhack/repos",
+    "events_url": "https://api.github.com/users/oddhack/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/oddhack/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "185b269c52cb14492260e096bec1964a78e2fc78",
+      "url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/commits/185b269c52cb14492260e096bec1964a78e2fc78",
+      "html_url": "https://github.com/KhronosGroup/OpenGL-Registry/commit/185b269c52cb14492260e096bec1964a78e2fc78"
+    }
+  ],
+  "stats": {
+    "total": 22,
+    "additions": 11,
+    "deletions": 11
+  },
+  "files": [
+    {
+      "sha": "8cbdb160b17aac68fb071be7bd4029e9a31df94e",
+      "filename": "api/GL/glext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fglext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fglext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGL%2Fglext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -32,7 +32,7 @@ extern \"C\" {\n #define GLAPI extern\n #endif\n \n-#define GL_GLEXT_VERSION 20240721\n+#define GL_GLEXT_VERSION 20240815\n \n #include <KHR/khrplatform.h>\n "
+    },
+    {
+      "sha": "faf92b8f3eb74557c62ae115614a5d6005a607e0",
+      "filename": "api/GL/glxext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fglxext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fglxext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGL%2Fglxext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -15,7 +15,7 @@ extern \"C\" {\n **   https://github.com/KhronosGroup/OpenGL-Registry\n */\n \n-#define GLX_GLXEXT_VERSION 20231018\n+#define GLX_GLXEXT_VERSION 20240815\n \n /* Generated C header for:\n  * API: glx"
+    },
+    {
+      "sha": "a606d07b5b21b011b223a7be0993de7dece1bf66",
+      "filename": "api/GL/wgl.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fwgl.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fwgl.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGL%2Fwgl.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -20,7 +20,7 @@ extern \"C\" {\n #include <windows.h>\n #endif\n \n-/* Generated on date 20231018 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: wgl"
+    },
+    {
+      "sha": "ace4429c98ea3d9bc158b2b6592414b258027adb",
+      "filename": "api/GL/wglext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fwglext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGL%2Fwglext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGL%2Fwglext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -20,7 +20,7 @@ extern \"C\" {\n #include <windows.h>\n #endif\n \n-#define WGL_WGLEXT_VERSION 20231018\n+#define WGL_WGLEXT_VERSION 20240815\n \n /* Generated C header for:\n  * API: wgl"
+    },
+    {
+      "sha": "1e57e552b0c92aa4d99563fdb69b8c5135225409",
+      "filename": "api/GLES/gl.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES%2Fgl.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES%2Fgl.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLES%2Fgl.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -17,7 +17,7 @@ extern \"C\" {\n \n #include <GLES/glplatform.h>\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: gles1"
+    },
+    {
+      "sha": "cd8c92671a937ac704b84feeab04969c0fc79069",
+      "filename": "api/GLES/glext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES%2Fglext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES%2Fglext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLES%2Fglext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -19,7 +19,7 @@ extern \"C\" {\n #define GL_APIENTRYP GL_APIENTRY*\n #endif\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: gles1"
+    },
+    {
+      "sha": "5f6c2c9a700cfbcd6b9e89247f94c30779d89007",
+      "filename": "api/GLES2/gl2.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES2%2Fgl2.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES2%2Fgl2.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLES2%2Fgl2.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -25,7 +25,7 @@ extern \"C\" {\n #define GL_GLES_PROTOTYPES 1\n #endif\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: gles2"
+    },
+    {
+      "sha": "f4961063b649ad9390dced95bf720a0ef748318e",
+      "filename": "api/GLES2/gl2ext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES2%2Fgl2ext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES2%2Fgl2ext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLES2%2Fgl2ext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -19,7 +19,7 @@ extern \"C\" {\n #define GL_APIENTRYP GL_APIENTRY*\n #endif\n \n-/* Generated on date 20240721 */\n+#define GL_GLEXT_VERSION 20240815\n \n /* Generated C header for:\n  * API: gles2"
+    },
+    {
+      "sha": "850eb836f10fc1f0ec5fcdd0f9af61edb959da9c",
+      "filename": "api/GLES3/gl3.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES3%2Fgl3.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLES3%2Fgl3.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLES3%2Fgl3.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -25,7 +25,7 @@ extern \"C\" {\n #define GL_GLES_PROTOTYPES 1\n #endif\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: gles2"
+    },
+    {
+      "sha": "7497f761953272f22b63c152ae620e195f9c757b",
+      "filename": "api/GLSC2/glsc2.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLSC2%2Fglsc2.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLSC2%2Fglsc2.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLSC2%2Fglsc2.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -21,7 +21,7 @@ extern \"C\" {\n #define GL_APIENTRYP GL_APIENTRY*\n #endif\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: glsc2"
+    },
+    {
+      "sha": "2df053049ca45ca652c826f030cab001cfecde17",
+      "filename": "api/GLSC2/glsc2ext.h",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/KhronosGroup/OpenGL-Registry/blob/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLSC2%2Fglsc2ext.h",
+      "raw_url": "https://github.com/KhronosGroup/OpenGL-Registry/raw/4f845dc97972c72cad684cc22c7bf96e6d5319a6/api%2FGLSC2%2Fglsc2ext.h",
+      "contents_url": "https://api.github.com/repos/KhronosGroup/OpenGL-Registry/contents/api%2FGLSC2%2Fglsc2ext.h?ref=4f845dc97972c72cad684cc22c7bf96e6d5319a6",
+      "patch": "@@ -19,7 +19,7 @@ extern \"C\" {\n #define GL_APIENTRYP GL_APIENTRY*\n #endif\n \n-/* Generated on date 20240721 */\n+/* Generated on date 20240815 */\n \n /* Generated C header for:\n  * API: glsc2"
+    }
+  ]
+}

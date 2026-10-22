@@ -1,0 +1,61 @@
+# About Imagine
+Imagine offers a standardised protocol for interacting with image data as well as several operators to manipulate images. It lets you load and save to a variety of image formats, convert pixel data, and so on.
+
+## Creating Images
+You can create an image directly via ``make-image`` or ``make-image*``, or load it from a file format on disk via ``load-image``. By default the ``imagine`` system does not support any formats, you need to load the subsystems that implement the formats relevant to your needs, such as ``imagine/png`` and ``imagine/jpeg``. Similarly you can save images back to disk via ``save-image``.
+
+Once you have an image, you can investigate its properties:
+
+- ``w`` The width in pixels
+- ``h`` The height in pixels
+- ``d`` The depth in pixels
+- ``layout`` The layout of each pixel (``:rgb`` etc)
+- ``channel-type`` The data type of each colour channel in the pixel (``:unsigned-byte`` etc)
+- ``origin`` The origin of the image (``:top-left`` etc)
+- ``data`` The raw, packed pixel data
+
+Since the ``layout`` and ``channel-type`` can take a number of different values, interacting with pixel data in a generic way can be tricky. In most cases you will likely only care about a specific set of values and will want to write specific handling functions for those. However, if you want to generically operate on pixel data without knowledge of the layout, channel-type, or the backing storage type, you can use the following helpers:
+
+- ``with-pixel-data`` To get an accessor for direct reading and writing of pixel channels
+- ``with-image-pixels`` Shorthand for the above
+- ``with-image-pixels*`` Shorthand for multiple images using the above
+- ``with-view`` To get an accessor for direct reading and writing of pixel channels within a ``view`` of an image
+
+However, most frequently you'll just want to shovel the data raw some other place to save it or to display it or whatever, or want to use one of the generic operations Imagine provides for you.
+
+## Operations
+Out of the box Imagine supports the following operations on images:
+
+- ``adjust`` To change the image pixel data properties
+- ``resize`` To resize (extend) the image dimensions
+- ``scale`` To scale (stretch) the image to a new size
+- ``rotate`` To rotate the image by increments of 90 degrees
+- ``mirror`` To mirror the image
+- ``transfer`` To transfer pixel data between sub-areas of images
+
+Note that because these operations perform on generic image data regardless of pixel layout or channel type, they are unlikely to be as fast as a bespoke operation would be for a specific layout and channel type. If performance is crucial to you, you will want to create such bespoke versions.
+
+## Formats
+The following formats are supported out of the box with their respective subsystems:
+
+- ``raw``
+- ``bmp``
+- ``gif``
+- ``hdr``
+- ``jpeg`` (``imagine/jpeg`` or ``imagine/jpeg-turbo``)
+- ``ktx``
+- ``ktx2``
+- ``png``
+- ``qoi``
+- ``sf3``
+- ``svg``
+- ``terragen``
+- ``tga``
+- ``tiff``
+- ``devil`` (generic provider for many formats)
+
+As well as the following subsystems for different container formats:
+
+- ``foreign-pointer`` for direct foreign memory storage
+- ``memory-region`` for storage within ''memory-region''(https://shinmera.com/docs/memory-region)s
+- ``depot`` for storage within ''depot''(https://shinmera.com/docs/depot)s

@@ -1,0 +1,36 @@
+# About GLFW
+This is an up-to-date bindings library to the most recent "GLFW"(link https://glfw.org) OpenGL context management library. It allows easy and convenient access to creating windows for OpenGL or Vulkan graphics output.
+
+Unlike other common lisp libraries like cl-glfw, cl-glfw3, and bodge-glfw it is up to date with latest GLFW sources, ships precompiled binaries, includes a convenient lispified API with full coverage, and is actually documented. Wow!
+
+## How To
+First, initialize the library:
+
+:: common lisp
+(org.shirakumo.fraf.glfw:init)
+::
+
+And now you can create a new window instance:
+
+:: common lisp
+(make-instance 'org.shirakumo.fraf.glfw:window)
+::
+
+You will probably want to pass one of several initargs, such as ``:context-version-major`` to pass window creation hints such as for the OpenGL context, back buffer properties, window properties, or initial window attributes like ``:width`` and ``:height``. Please see the documentation of ``window`` for all supported initargs.
+
+Once the window is created, you can start using OpenGL commands, ``swap-buffers`` to display, use the several window property accessors like ``size`` to manipulate it, and so on. Please again see the documentation of ``window`` for all supported operations.
+
+In order to react to inputs and other events, you should first create a subclass of ``window``, then implement methods on the event handling functions you need, like ``key-changed``. Then, simply create an instance of your window class and regularly call ``poll-events`` to process events.
+
+Once you are done with a window, you should dispose of it with ``destroy``.
+
+Prior to creating a window instance, you can also manually ``init`` the library and fetch the available monitors and their video modes via ``list-monitors``. This allows you to create a context that immediately fullscreens to the desired monitor, for instance.
+
+Once you are done with GLFW as a whole or want to shut everything down at once, you should call ``shutdown``.
+
+The library also provides a simple shorthand macro, ``with-game-loop`` to create a simple variable-frame-rate game loop with window initialisation and all for quick tests and experiments.
+
+## Direct Access
+This library also provides the ``org.shirakumo.fraf.glfw.cffi`` package, which exposes the raw types and functions exported by the GLFW API. If you need access to functionality not covered by the wrapper or have other needs, you can use the functions from that package to handle direct access.
+
+You can also mix the wrapper and low level calls by retrieving the ``pointer`` of a window or other ``foreign-object``.

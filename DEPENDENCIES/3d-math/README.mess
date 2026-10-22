@@ -1,0 +1,220 @@
+# About 3d-math
+This library implements types, operators, and algorithms commonly used in math for 2D and 3D graphics.
+
+It supersedes and combines the prior libraries 3d-vectors, 3d-matrices, 3d-quaternions, and 3d-transfroms. The new API is largely but not entirely backwards compatible, and adds a lot of new functionality.
+
+## General API Conventions
+The API is split over five packages for each data type:
+
+- ``org.shirakumo.fraf.math.vectors``
+- ``org.shirakumo.fraf.math.matrices``
+- ``org.shirakumo.fraf.math.quaternions``
+- ``org.shirakumo.fraf.math.dual-quaternions``
+- ``org.shirakumo.fraf.math.transforms``
+
+With the ``org.shirakumo.fraf.math`` package combining them all into one. All packages are designed to be ``:use``d, and follow strict function name prefixing to avoid name clashes. The following naming rules apply:
+
+- An operation taking an output target value starts with a ``!``
+- An operation putting the target value into the first argument starts with a ``n``
+- A pure operation that returns a fresh value without any modifications has neither prefix.
+- Each data type has its own prefix for its operations:
+  - ``v`` for vectors
+  - ``m`` for matrices
+  - ``q`` for quaternions
+  - ``q2`` for dual-quaternions
+  - ``t`` for transforms
+
+Some example operations would be: ``v+``, ``nm*``, ``!qinv``
+
+For the data types themselves similar rules apply:
+
+- Each data type can come in several variants depending on the containing data type, with their own prefix for the type name and constructor function:
+  - none for ``single-float``
+  - ``d`` for ``double-float``
+  - ``i`` for ``(signed-byte 32)``
+  - ``u`` for ``(unsigned-byte 32)``
+  - ``*`` for "any of the above"
+- Each data type has its own "base name", after which their constructor functions are named:
+  - ``vec`` for vectors
+  - ``mat`` for matrices
+  - ``quat`` for quaternions
+  - ``quat2`` for dual-quaternions
+  - ``transform`` for transforms
+- For vectors and matrices, they can also come in different sizes, which is used as a suffix:
+  - ``2`` for a 2-dimensional vector or 2x2 square matrix
+  - ``3`` for a 3-dimensional vector or 3x3 square matrix
+  - ``4`` for a 4-dimensional vector or 4x4 square matrix
+  - ``n`` for a nxm arbitrary matrix
+  - ``*`` for "any of the above"
+
+Some example types would be: ``vec2``, ``dmatn``, ``quat``, ``vec*`` ``*mat3``
+
+The following feature flags indicate which types are supported:
+
+- ``:3d-math-f32`` the ``single-float`` types
+- ``:3d-math-f64`` the ``double-float`` types
+- ``:3d-math-i32`` the ``(signed-byte 32)`` types
+- ``:3d-math-u32`` the ``(unsigned-byte 32)`` types
+
+If you would like to disable a specific type, push the corresponding ``:3d-math-no-*`` feature before **compiling** the library. By default ``(unsigned-byte 32)`` types are not available. In order to get them, you must similarly push ``:3d-math-u32`` before compiling.
+
+## Vectors
+The vectors API supports the following operations:
+
+- Constructors
+  ``vec``, ``vec2``, ``vec3``, ``vec4``
+  ``dvec``, ``dvec2``, ``dvec3``, ``dvec4``
+  ``uvec``, ``uvec2``, ``uvec3``, ``uvec4``
+  ``ivec``, ``ivec2``, ``ivec3``, ``ivec4``
+  ``vrand``, ``vzero``, ``vcopy``
+- Accessors
+  ``vx``, ``vy``, ``vz``, ``vw``, ``varr``
+- Comparators
+  ``v=``, ``v~=``, ``v/=``, ``v<``, ``v<=``, ``v>``, ``v>=``
+- Arithmetic
+  ``v+``, ``v-``, ``v*``, ``v/``, ``v+*``, ``vincf``, ``vdecf``, ``v1+``, ``v1-``, ``vscale``, ``vc``, ``v.``
+- Element-wise
+  ``vmin``, ``vmax``, ``vabs``, ``vmod``, ``vfloor``, ``vceiling``, ``vround``, ``valign``
+- Norms
+  ``v1norm``, ``vinorm``, ``v2norm``, ``vpnorm``
+- Distances
+  ``vdistance``, ``vsqrdistance``, ``vlength``, ``vsqrlength``, ``vangle``
+- Rotation
+  ``vrot``, ``vrot2``, ``vrotv``
+- Polar Coordinates
+  ``vpolar``, ``vcartesian``
+- Interpolation
+  ``vlerp``
+- Normalisation
+  ``vinv``, ``vunit``, ``vunit*``
+- Constants
+  ``+vx2+``, ``+vy2+``, ``+vx3+``, ``+vy3+``, ``+vz3+``, ``+vx4+``, ``+vy4+``, ``+vz4+``, ``+vw4+``
+  ``-vx2+``, ``-vy2+``, ``-vx3+``, ``-vy3+``, ``-vz3+``, ``-vx4+``, ``-vy4+``, ``-vz4+``, ``-vw4+``
+- Misc
+  ``v<-``, ``vsetf``, ``with-vec``
+
+## Matrices
+The matrices API supports the following operations:
+
+- Constructors
+  ``mat``, ``mat2``, ``mat3``, ``mat4``, ``matn``
+  ``dmat``, ``dmat2``, ``dmat3``, ``dmat4``, ``dmatn``
+  ``umat``, ``umat2``, ``umat3``, ``umat4``, ``umatn``
+  ``imat``, ``imat2``, ``imat3``, ``imat4``, ``imatn``
+  ``mcopy``, ``mzero``, ``mrand``, ``meye``, ``mblock``
+- Accessors
+  ``marr``, ``mcref``, ``miref``
+- Comparators
+  ``m=``, ``m~=``, ``m/=``, ``m<``, ``m<=``, ``m>``, ``m>=``
+- Arithmetic
+  ``m+``, ``m-``, ``m*``, ``m/``
+- Element-wise
+  ``mmin``, ``mmax``
+- Norms
+  ``m1norm``, ``minorm``, ``m2norm``
+- Transformations
+  ``nmtranslate``, ``nmscale``, ``nmrotate``
+  ``mtranslation``, ``mscaling``, ``mrotation``
+  ``mlookat``, ``mfrustum``, ``mperspective``, ``mortho``
+- Matrix operations
+  ``mrow``, ``mcol``, ``mdiag``, ``mminor``, ``mdet``, ``mtrace``
+  ``mpivot``, ``mlu``, ``mqr``, ``meigen``, ``mcofactor``, ``mcof``, ``madj``
+  ``minv``, ``minv-affine``, ``mtranspose``
+- Misc
+  ``mswap-row``, ``mswap-col``, ``mapply``, ``mtransfer``
+  ``m<-``, ``msetf``, ``with-fast-matref``
+
+## Quaternions
+Quaternions represent a rotation or orientation in 3D space. The advantage over the matrix representation is that quaternions are not subject to gimbal lock and offer faster and more precise manipulation over time.
+
+The quaternions API supports the following operations:
+
+- Constructors
+  ``quat``, ``dquat``
+  ``qfrom-angle``, ``qtowards``, ``qlookat``
+  ``qrand``, ``qcopy``, ``qzero``
+  ``qmat``, ``qfrom-mat``
+- Accessors
+  ``qx``, ``qy``, ``qz``, ``qw``
+  ``qi``, ``qj``, ``qk``, ``qr``
+  ``qaxis``, ``qangle``
+- Comparators
+  ``q=``, ``q~=``, ``q/=``, ``q<``, ``q<=``, ``q>``, ``q>=``
+- Arithmetic
+  ``q+``, ``q-``, ``q*``, ``q/``, ``q+*``, ``qexpt``, ``q.``
+- Distances
+  ``qlength``, ``qsqrlength``
+- Element-wise
+  ``qmin``, ``qmax``
+- Interpolation
+  ``qmix``, ``qnlerp``, ``qslerp``
+- Normalisation
+  ``qinv``, ``qunit``, ``qunit*``, ``qconjugate``
+- Misc
+  ``q<-``, ``qsetf``
+
+## Dual Quaternions
+Dual quaternions represent a rotation and a translation, without scaling. They can be useful as an alternative representation of transformations, as they preserve twists without loss, while linear matrix interpolation leads to a "squeezing" effect.
+
+The dual-quaternions API supports the following operations:
+
+- Constructors
+  ``quat2``, ``dquat2``
+  ``q2location``, ``q2from-location``
+  ``q2copy``, ``q2zero``
+- Accessors
+  ``q2real``, ``q2dual``
+- Comparators
+  ``q2=``, ``q2~=``, ``q2/=``
+- Arithmetic
+  ``q2+``, ``q2-``, ``q2*``, ``q2/``, ``q2.``
+- Distances
+  ``q2length``, ``q2sqrlength``
+- Normalisation
+  ``q2unit``, ``q2unit*``, ``q2conjugate``
+- Misc
+  ``q2<-``
+
+## Transforms
+Transforms encapsulate a translation, rotation, and scaling, sometimes also referred to as a "gizmo". It allows encapsulating the transformation of an object without falling victim to gimbal lock or drifting precision from the transform matrix representation.
+
+The transforms API supports the following operations:
+
+- Constructors
+  ``transform``, ``dtransform``
+  ``tmat``, ``tfrom-mat``
+  ``tquat2``, ``tfrom-quat2``
+  ``tcopy``, ``tzero``
+- Accessors
+  ``tlocation``, ``tscaling``, ``trotation``
+- Comparators
+  ``t=``, ``t~=``, ``t/=``
+- Arithmetic
+  ``t+``, ``t-``, ``t*v``, ``t*p``, ``t*p-inv``
+- Interpolation
+  ``tmix``
+- Normalisation
+  ``tinv``
+- Transformations
+  ``tmove``, ``toffset``, ``tscale``, ``trotate``
+  ``tmove-by``, ``toffset-by``, ``tscale-by``, ``trotate-by``
+- Misc
+  ``t<-``, ``tx``, ``ty``, ``tz``
+
+## Internal Organisation
+Each data type is split off into its own module as follows:
+
+- ``package.lisp`` Additional exports not covered by auto-exporting
+- ``types.lisp`` Definition of the basic template data types, accessors, and constructors
+- ``raw-ops.lisp`` Definition of the raw type-specific operation functions
+- ``ops.lisp`` Definition of the user-facing dispatching operations
+- ``test.lisp`` Unit tests
+
+Heavy use is made of the "type-templates"(https://shinmera.github.io/type-templates) system to allow generating the many, many different variants of operations for each type combination, as well as the complex dispatching behaviour.
+
+The core template types are ``vec-type``, ``mat-type``, ``quat-type``, ``quat2-type``, and ``transform-type`` respectively. We also provide and heavily make use of the custom types ``f32``, ``f64``, ``u32`` and ``i32`` to define the contained immediate value types.
+
+The shared functions and abbreviating macros used for quickly defining the common reductors, type dispatchers, etc. can be found in ``toolkit.lisp``.
+
+## Stack Allocation
+Given a suitably good compiler, such as recent SBCL versions, a lot of the 3d-math results can be stack-allocated to avoid triggering GC by declaring them ``dynamic-extent``. Even relatively complex forms can be automatically transformed to stack allocations. To check whether this is successful, you can use ``sb-ext:stack-allocated-p`` on the value. In cases where the automatic inference fails or you need more precise control, you should be able to use the plain value constructors such as ``vec2``, declare the variable the result is bound to to be ``dynamic-extent``, and then proceed to use the destructive variants of the various operators such as ``nv+`` or ``!v+`` rather than ``v+``.

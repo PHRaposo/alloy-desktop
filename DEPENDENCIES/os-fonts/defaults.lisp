@@ -1,0 +1,16 @@
+(in-package #:os-fonts)
+
+(define-condition no-backend-found (os-fonts-error)
+  ()
+  (:report (lambda (c s)
+             (declare (ignore c))
+             (format s "No usable native font backend for os-fonts could be found."))))
+
+(defun determine-default-backend ()
+  (cond ((find :linux *features*)
+         'os-fonts.linux:linux)
+        ((or (find :win32 *features*) (find :windows *features*))
+         'os-fonts.windows:windows)
+        ((find :darwin *features*)
+         'os-fonts.macos:macos)
+        (t (error 'no-backend-found))))

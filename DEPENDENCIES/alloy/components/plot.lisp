@@ -1,0 +1,61 @@
+(in-package #:org.shirakumo.alloy)
+
+(defclass plot (value-component)
+  ((x-range :initarg :x-range :initform T :accessor x-range)
+   (y-range :initarg :y-range :initform T :accessor y-range)
+   (plot-points :initform #() :accessor plot-points)))
+
+(defmethod (setf x-range) :after (value (plot plot))
+  (mark-for-render plot)
+  (recompute-plot-points plot))
+
+(defmethod (setf y-range) :after (value (plot plot))
+  (mark-for-render plot)
+  (recompute-plot-points plot))
+
+(defmethod suggest-size (size (plot plot))
+  (size (w size) (umax (un 400) (h size))))
+
+(defmethod value-changed ((plot plot))
+  (call-next-method)
+  (recompute-plot-points plot))
+
+;; KLUDGE: specialising on RENDERER here would apply too late,
+;;         and :AROUND too early...
+(defmethod render ((renderer ui) (plot plot))
+  (constrain-visibility plot renderer)
+  (call-next-method))
+
+(defun recompute-plot-points (plot)
+  (let ((x-range (x-range plot))
+        (y-range (y-range plot))
+        (data (value plot))
+        (extent (bounds plot))
+        xmin xmax ymin ymax)
+    (etypecase x-range
+      (cons (setf xmin (car x-range)
+                  xmax (cdr x-range)))
+      ((eql T) (setf xmin 0
+                     xmax (length data))))
+    (etypecase y-range
+      (cons (setf ymin (car y-range)
+                  ymax (cdr y-range)))
+      ((eql T) (setf ymin (loop for p across data minimize p)
+                     ymax (loop for p across data maximize p))))
+    (let* ((x-scale (float (/ (max 1f0 (pxw extent)) (- xmax xmin)) 0f0))
+           (y-scale (float (/ (max 1f0 (pxh extent)) (- ymax ymin)) 0f0))
+           (length (max (- xmax xmin)))
+           (points (plot-points plot)))
+      (when (/= length (length points))
+        (let ((new (make-array length)))
+          (replace new points)
+          (loop for i from (length points) below (length new)
+                do (setf (aref new i) (px-point 0 0)))
+          (setf (plot-points plot) (setf points new))))
+      (loop for i from 0 below (length points)
+            for x from (/ x-scale 2) by x-scale
+            for p = (aref data (+ i xmin))
+            for y = (* (- p ymin) y-scale)
+            for point = (aref points i)
+            do (setf (slot-value (x point) 'value) (float x 0f0))
+               (setf (slot-value (y point) 'value) (float y 0f0))))))

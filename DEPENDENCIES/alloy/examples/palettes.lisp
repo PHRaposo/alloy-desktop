@@ -1,0 +1,62 @@
+(in-package #:org.shirakumo.alloy.examples)
+
+(defclass forced-state-component (alloy:component)
+  ((state :initarg :state :initform #b0 :reader simple:element-palette-state)))
+
+(defmethod alloy:active-p ((component forced-state-component))
+  (logbitp 2 (simple:element-palette-state component)))
+
+(defmethod alloy:focus ((component forced-state-component))
+  (cond ((logbitp 0 (simple:element-palette-state component))
+         :weak)
+        ((logbitp 1 (simple:element-palette-state component))
+         :strong)))
+
+(defclass palette-layout (simple:palette-element alloy:grid-layout)
+  ())
+
+(presentations:define-realization (windowing:window palette-layout)
+  ((:bg simple:rectangle)
+   (alloy:margins)
+   :pattern :window))
+
+(defmacro c+ (&rest classes)
+  (let ((name (intern (format NIL "%~{~a+~a~}" classes))))
+    `(load-time-value
+      (defclass ,name ,classes ())
+      ',name)))
+
+(define-example palettes (screen)
+  (let* ((window (windowing:make-window screen))
+         (focus (make-instance 'alloy:focus-list :focus-parent window))
+         (layout (make-instance 'alloy:vertical-linear-layout :layout-parent window))
+         (states '(("Default"           #b0000)
+                   ("Weak Focus"        #b0001)
+                   ("Strong Focus"      #b0010)
+                   ("Activated"         #b0100)
+                   ("Activated Focused" #b0101)
+                   ("Disabled"          #b1000)
+                   ("Disabled Focused"  #b1001))))
+    (dolist (palette '(simple:dark simple::light))
+      (let ((layout (make-instance 'palette-layout
+                                   :layout-parent layout
+                                   :col-sizes (make-list (length states) :initial-element '200)
+                                   :row-sizes '(30)
+                                   :palette (simple:palette palette)))
+            (row 0) (col 0))
+        (loop for (name state) in states
+              do (flet ((enter (thing)
+                          (alloy:enter thing layout :col col :row row)
+                          (incf row)))
+                   (enter name)
+                   (enter (alloy:represent "Button" (c+ forced-state-component alloy:button)
+                                           :state state))
+                   (enter (alloy:represent NIL (c+ forced-state-component alloy:switch)
+                                           :state state))
+                   (enter (alloy:represent 0 (c+ forced-state-component alloy:ranged-slider)
+                                           :state state))
+                   (enter (alloy:represent "" (c+ forced-state-component alloy:input-line)
+                                           :state state :placeholder "Placeholder"))
+                   (enter (alloy:represent "Filled in" (c+ forced-state-component alloy:input-line)
+                                           :state state))
+                   (setf col (1+ col) row 0)))))))

@@ -1,0 +1,41 @@
+# About Observables
+This is a library for defining activities/changes/triggers/notifications/events on objects that can be observed by remote functions.
+
+## How To
+The basic units to understand are the the **observable**, the **activity**, and the **observer**. An ``observable`` is any object on which observations can be made. An ``activity`` is a description of a specific "endpoint" on an observable object that can be notified. This is usually just a name and an argument list. An observer is a function that is invoked when the activity it listens on is notified. Observers can also define a "specializer" which is a set of type tests for each argument that must be fulfilled for the observer function to be invoked.
+
+Activities are defined globally on classes using ``define-activity`` or ``register-activity``. To get information on available activities you can use ``list-activities`` or ``describe`` on an ``observable`` instance.
+
+Note however that you can still observe activities that were not "officially" registered, and an observable can still notify in the same way. Basically activity registration should be seen as the user interface specification, rather than a hard requirement and prerequisite for the core notification mechanism to work.
+
+To define an observer, you can use ``on`` or ``observe`` to define them dynamically on instances, or ``define-observation`` to define them globally on all instances of specified classes.
+
+In order to actually cause an observer to be invoked, the activity it listens on needs to notified via ``notify-observers``. This can be done manually as appropriate, or automatically via functions defined by ``define-observable``.
+
+A simple example of this is the ``observable-object`` class, which will notify the ``slot-value`` activity whenever one of its slots is changed. This also happens for subclasses, so if you ever want to ensure that all of your slots can be observed, this is a very simple way to do so.
+
+:: common lisp
+(defclass my-example (observables:observable-object)
+  (foo bar))
+
+(define-observation unspecialized (value object slot-name)
+  (declare (observables:observe slot-value my-example))
+  (format T "~&Hello! Got: ~a ~a ~a" value object slot-name))
+
+(define-observation specialized (value object slot-name)
+  (declare (observables:observe (slot-value T T (eql foo)) my-example))
+  (format T "~&Goodbye! Got: ~a ~a ~a" value object slot-name))
+::
+
+When you now run ``(setf (slot-value (make-instance 'my-example) 'foo) 1)`` you'll both get a "Hello!" and "Goodbye!" message. But if you set the ``bar`` slot instead, the specializer prevents the specialised observer from running.
+
+Often times however you'll want to observe an activity on a specific object, rather than all instances of a class, or retain lexical information of some kind in your observer function. For those cases there's the ``on`` macro and the ``observe`` function it expands to.
+
+:: common lisp
+(let ((instance (make-instance 'observables:observable)))
+  (observables:on activate (instance)
+    (print :woah))
+  (observables:notify-observers 'activate instance))
+::
+
+This example also illustrates an important point: while it is good practise to formally define and register activities, you can notify on arbitrary activity names, and observe arbitrary activity names, too. Such activities can be used for internals that aren't part of an externally visible interface, or simply for quick prototyping.

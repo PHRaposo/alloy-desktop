@@ -1,0 +1,81 @@
+(in-package #:org.shirakumo.sf3)
+
+(bs:define-io-alias pixel-format
+    (case uint8
+      (#x01 :sint8)
+      (#x02 :sint16)
+      (#x04 :sint32)
+      (#x08 :sint64)
+      (#x11 :uint8)
+      (#x12 :uint16)
+      (#x14 :uint32)
+      (#x18 :uint64)
+      (#x22 :float16)
+      (#x24 :float32)
+      (#x28 :float64)))
+
+(bs:define-io-structure (image (:constructor %make-image))
+  (width uint32)
+  (height uint32)
+  (depth uint32)
+  (channels uint8)
+  (pixel-format pixel-format)
+  (pixels (case (bs:slot pixel-format)
+            (:sint8 (vector :sint8 (image-pixel-count bs:instance)))
+            (:sint16 (vector :sint16 (image-pixel-count bs:instance)))
+            (:sint32 (vector :sint32 (image-pixel-count bs:instance)))
+            (:sint64 (vector :sint64 (image-pixel-count bs:instance)))
+            (:uint8 (vector :uint8 (image-pixel-count bs:instance)))
+            (:uint16 (vector :uint16 (image-pixel-count bs:instance)))
+            (:uint32 (vector :uint32 (image-pixel-count bs:instance)))
+            (:uint64 (vector :uint64 (image-pixel-count bs:instance)))
+            (:uint16 (vector :uint16 (image-pixel-count bs:instance)))
+            (:float32 (vector :float32 (image-pixel-count bs:instance)))
+            (:float64 (vector :float64 (image-pixel-count bs:instance))))))
+
+(defun image-pixel-count (image)
+  (* (image-width image)
+     (image-height image)
+     (image-depth image)
+     (ldb (byte 4 0) (image-channels image))))
+
+(defun make-image (pixels width height &key (depth 1) (pixel-type :v))
+  (%make-image :width width
+               :height height
+               :depth depth
+               :channels (ecase pixel-type
+                           (:V #x01)
+                           (:VA #x02)
+                           (:RGB #x03)
+                           (:RGBA #x04)
+                           (:AV #x12)
+                           (:BGR #x13)
+                           (:ABGR #x14)
+                           (:ARGB #x24)
+                           (:BGRA #x34)
+                           (:CMYK #x44)
+                           (:KYMC #x54))
+               :pixel-format (lisp-type->bs-type (array-element-type pixels))
+               :pixels pixels))
+
+(defun pixel-type (image)
+  (ecase (image-channels image)
+    (#x01 :V)
+    (#x02 :VA)
+    (#x03 :RGB)
+    (#x04 :RGBA)
+    (#x12 :AV)
+    (#x13 :BGR)
+    (#x14 :ABGR)
+    (#x24 :ARGB)
+    (#x34 :BGRA)
+    (#x44 :CMYK)
+    (#x54 :KYMC)))
+
+(defun pixel-stride (image)
+  (ldb (byte 4 0) (image-channels image)))
+
+(define-print-method image "~d~[~;~:;~:*x~d~]~[~;~:;~:*x~d~] ~a ~a" 
+  width height depth format (pixel-type object))
+
+(define-accessors image width height depth channels pixel-format pixels)

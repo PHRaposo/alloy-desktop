@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 135.46666 135.46666"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   sodipodi:docname="AppImage.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="title4504">Portacle</title>
+  <defs
+     id="defs2">
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="10,241.80763"
+       up_right_point="125.46666,241.80763"
+       down_left_point="0,268.26597"
+       down_right_point="135.46666,268.26597"
+       id="path-effect4615"
+       is_visible="true"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="true"
+       overflow_perspective="false" />
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="10,246.3506"
+       up_right_point="135.46833,246.3506"
+       down_left_point="10,272.81016"
+       down_right_point="135.46833,272.81016"
+       id="path-effect4613"
+       is_visible="true"
+       deform_type="perspective"
+       horizontal_mirror="true"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.7"
+     inkscape:cx="280.71429"
+     inkscape:cy="211.42857"
+     inkscape:document-units="mm"
+     inkscape:current-layer="g4819"
+     showgrid="false"
+     units="px"
+     inkscape:pagecheckerboard="true"
+     inkscape:window-width="1920"
+     inkscape:window-height="1057"
+     inkscape:window-x="0"
+     inkscape:window-y="23"
+     inkscape:window-maximized="1"
+     inkscape:showpageshadow="2"
+     inkscape:deskcolor="#d1d1d1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>Portacle</dc:title>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Nicolas Hafner</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:rights>
+          <cc:Agent>
+            <dc:title>Shirakumo</dc:title>
+          </cc:Agent>
+        </dc:rights>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-161.53336)">
+    <g
+       id="g4819"
+       style="fill:#ffbb00;fill-opacity:1">
+      <path
+         inkscape:path-effect="#path-effect4615"
+         inkscape:connector-curvature="0"
+         inkscape:original-d="m 0,241.80763 h 135.46666 v 26.45834 H 0 Z"
+         id="rect4610"
+         d="m 10,241.80763 h 115.46666 l 10,26.45834 H 0 Z"
+         style="opacity:0.5;fill:#0088ee;fill-opacity:1;stroke:none;stroke-width:13.2200222;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         id="path4603"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:78.778px;line-height:10.2576px;font-family:'Concourse T6';-inkscape-font-specification:'Concourse T6';letter-spacing:0px;word-spacing:0px;fill:#0088ee;fill-opacity:1;stroke:none;stroke-width:0.410302px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 31.868339 201.16402 C 16.427844 201.16402 4.0597005 212.82316 4.0597005 230.39066 C 4.0597005 245.04338 15.246173 257.09652 31.868339 257.09652 C 38.170582 257.09652 46.363281 254.57546 50.538517 250.95167 L 47.387805 242.20751 L 46.914966 242.20751 C 42.818508 245.43741 38.091861 247.09145 32.025952 247.09145 C 23.28159 247.09145 15.16755 240.63169 15.16755 230.07543 C 15.16755 217.78606 21.942536 211.16857 31.789791 211.16857 C 38.013256 211.16857 43.527397 213.45359 46.59974 215.97448 L 47.072579 215.97448 L 49.829517 206.28463 C 45.260391 203.44862 39.273475 201.16402 31.868339 201.16402 z M 58.035217 202.34586 L 58.035217 255.91468 L 89.467407 255.91468 L 89.467407 246.14628 L 68.670227 246.14628 L 68.670227 202.34586 L 58.035217 202.34586 z M 100.26985 202.88846 L 118.52713 229.41294 L 100.26985 255.64493 L 113.09852 255.64493 L 131.40697 229.41294 L 113.09852 202.88846 L 100.26985 202.88846 z " />
+    </g>
+  </g>
+</svg>

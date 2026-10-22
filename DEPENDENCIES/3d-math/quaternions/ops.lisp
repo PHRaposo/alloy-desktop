@@ -1,0 +1,262 @@
+#|
+ This file is a part of 3d-math
+ (c) 2023 Shirakumo http://shirakumo.org (shirakumo@tymoon.eu)
+|#
+
+(in-package #:org.shirakumo.fraf.math.quaternions)
+
+(defmacro define-2quat-dispatch (op &optional (revop op))
+  `(define-templated-dispatch ,(compose-name NIL '!2q op) (x a b)
+     ((quat-type 0 #(0 1)) squatop ,op <t>)
+     ((quat-type 0 real) squatop ,op real)
+     ((quat-type #(0 1) 0) (squatop ,revop <t>) x b (,op a))
+     ((quat-type real 0) (squatop ,revop real) x b (,op a))
+     ((quat-type 0 0) 2quatop ,op)))
+
+(defmacro define-1quat-dispatch (name op &rest template-args)
+  `(define-templated-dispatch ,name (x a)
+     ((quat-type 0) ,op ,@template-args)))
+
+(defmacro define-quatcomp-dispatch (op &optional (comb 'and) (rop op))
+  `(define-templated-dispatch ,(compose-name NIL '2q op) (a b)
+     ((quat-type #(0 1)) squatreduce ,comb ,op <t>)
+     ((quat-type real) squatreduce ,comb ,op real)
+     ((real quat-type) (squatreduce ,comb ,rop real) b a)
+     ((quat-type 0) 2quatreduce ,comb ,op)))
+
+(define-dependent-dispatch-type matching-vec (types i ref)
+  (handler-case (apply #'type-instance 'vec-type 3 (template-arguments (nth ref types)))
+    (error () NIL)))
+
+(define-templated-dispatch !2q* (x a b)
+  :ignore-template-types (vec-type)
+  ((quat-type 0 #(0 0)) squatop * <t>)
+  ((quat-type 0 real) squatop * real)
+  ((quat-type 0 0) q*q)
+  ((#'(matching-vec 1) quat-type 0) q*v))
+
+(define-2quat-dispatch +)
+(define-2quat-dispatch - +)
+(define-2quat-dispatch / *)
+(define-2quat-dispatch min)
+(define-2quat-dispatch max)
+
+(define-quatcomp-dispatch =)
+(define-quatcomp-dispatch ~=)
+(define-quatcomp-dispatch equal=)
+(define-quatcomp-dispatch /= or)
+(define-quatcomp-dispatch < and >)
+(define-quatcomp-dispatch <= and >=)
+(define-quatcomp-dispatch > and <)
+(define-quatcomp-dispatch >= and <=)
+
+(define-1quat-dispatch q<- 1quatop identity)
+(define-1quat-dispatch !qconjugate conjugate)
+(define-1quat-dispatch !qinv inverses)
+
+(define-1quat-dispatch !1q- 1quatop -)
+(define-1quat-dispatch !1q/ 1quatop /)
+(define-1quat-dispatch !qabs 1quatop abs)
+(define-1quat-dispatch !qunit qunit)
+(define-1quat-dispatch !qunit* qunit*)
+
+(define-type-reductor !q+ q<- !2q+)
+(define-type-reductor !q* q<- !2q* NIL T)
+(define-type-reductor !q- q<- !2q- !1q-)
+(define-type-reductor !q/ q<- !2q/ !1q/)
+(define-type-reductor !qmin q<- !2qmin)
+(define-type-reductor !qmax q<- !2qmax)
+
+(define-templated-dispatch !q+* (x a b s)
+  :ignore-template-types (vec-type)
+  ((quat-type 0 #'(matching-vec 0) #(0 0)) q+*))
+(define-templated-dispatch !qrand (x)
+  ((quat-type) random))
+(define-templated-dispatch !qfrom-angle (x axis angle)
+  :ignore-template-types (vec-type)
+  ((quat-type #'(matching-vec 0) #(0 0)) qfrom-angle)
+  ;; FIXME: find a way to automate this crap...
+  ((quat #'(matching-vec 0) real) (qfrom-angle f32) x axis (f32 angle))
+  ((dquat #'(matching-vec 0) real) (qfrom-angle f64) x axis (f64 angle)))
+(define-templated-dispatch !qtowards (x from to)
+  :ignore-template-types (vec-type)
+  ((quat-type #'(matching-vec 0) 1) qtowards))
+(define-templated-dispatch !qlookat (x dir up)
+  :ignore-template-types (vec-type)
+  ((quat-type #'(matching-vec 0) 1) qlookat))
+(define-templated-dispatch !qexpt (x q exponent)
+  ((quat-type 0 #(0 0)) qexpt)
+  ((quat 0 real) (qexpt f32) x q (f32 exponent))
+  ((dquat 0 real) (qexpt f64) x q (f64 exponent)))
+(define-templated-dispatch !qmat (x q)
+  ((mat3 quat) (qmat 3 f32) x q)
+  ((mat4 quat) (qmat 4 f32) x q)
+  ((dmat3 dquat) (qmat 3 f64) x q)
+  ((dmat4 dquat) (qmat 4 f64) x q))
+(define-templated-dispatch !qfrom-mat (x m)
+  ((quat mat3) (qfrom-mat 3 f32) x m)
+  ((quat mat4) (qfrom-mat 4 f32) x m)
+  ((dquat dmat3) (qfrom-mat 3 f64) x m)
+  ((dquat dmat4) (qfrom-mat 4 f64) x m))
+(define-templated-dispatch !qmix (x a b tt)
+  ((quat-type 0 0 #(0 0)) qmix)
+  ((quat 0 0 real) (qmix f32) x a b (f32 tt))
+  ((dquat 0 0 real) (qmix f64) x a b (f64 tt)))
+(define-templated-dispatch !qnlerp (x a b tt)
+  ((quat-type 0 0 #(0 0)) qnlerp)
+  ((quat 0 0 real) (qnlerp f32) x a b (f32 tt))
+  ((dquat 0 0 real) (qnlerp f64) x a b (f64 tt)))
+(define-templated-dispatch !qslerp (x a b tt)
+  ((quat-type 0 0 #(0 0)) qslerp)
+  ((quat 0 0 real) (qslerp f32) x a b (f32 tt))
+  ((dquat 0 0 real) (qslerp f64) x a b (f64 tt)))
+(define-templated-dispatch !qeuler (x a)
+  :ignore-template-types (vec-type)
+  ((#'(matching-vec 1) quat-type) qeuler))
+
+(define-value-reductor q= 2q= and T)
+(define-value-reductor q~= 2q~= and T)
+(define-value-reductor qequal 2qequal= and T)
+(define-value-reductor q/= 2q/= and T)
+(define-value-reductor q< 2q< and T)
+(define-value-reductor q<= 2q<= and T)
+(define-value-reductor q> 2q> and T)
+(define-value-reductor q>= 2q>= and T)
+
+(define-rest-alias q+ (q &rest others) qzero)
+(define-rest-alias q- (q &rest others) qzero)
+(define-rest-alias q/ (q &rest others) qzero)
+(define-rest-alias qmin (q &rest others) qzero)
+(define-rest-alias qmax (q &rest others) qzero)
+
+(defun q* (m &rest others)
+  (let ((prototype m))
+    (loop for other in (cdr others)
+          do (unless (realp other) (setf prototype other)))
+    (apply #'!q* (*zero prototype) m others)))
+
+(define-compiler-macro q* (m &rest others)
+  (let ((prototype (gensym "PROTOTYPE"))
+        (first (gensym "FIRST"))
+        (others (loop for other in others
+                      collect (list (gensym "OTHER") other))))
+    `(let* (,@others
+            (,first ,m)
+            (,prototype ,first))
+       ,@(loop for (g) in others
+               collect `(unless (realp ,g) (setf ,prototype ,g)))
+       (!q* (*zero ,prototype) ,first ,@(mapcar #'first others)))))
+
+(defun nq* (m &rest others)
+  (apply #'!q* m m others))
+
+;; FIXME: This does not work for the case of (q* QUAT VEC)
+;;        as in that case the result should be stored in the VEC
+(define-compiler-macro nq* (m &rest others)
+  `(!q* ,m ,m ,@others))
+
+(define-templated-dispatch q. (a b)
+  ((quat-type 0) 2quatreduce + *))
+(define-templated-dispatch qsqrlength (a)
+  ((quat-type) 1quatreduce + sqr))
+(define-templated-dispatch qangle (a)
+  ((quat-type) qangle))
+(define-templated-dispatch (setf qangle) (value a)
+  ((#(1 1) quat-type) set-qangle))
+(define-templated-dispatch qsetf (a x y z w)
+  ((quat-type real real real real) setf))
+
+(define-templated-dispatch qdistance (a b)
+  ((quat-type 0) distance))
+
+(define-simple-alias qconjugate (q) qzero)
+(define-simple-alias qinv (q) qzero)
+(define-pure-alias qfrom-angle (axis angle) qzero !qfrom-angle)
+(define-simple-alias qtowards (from to) qzero)
+(define-simple-alias qlookat (direction up) qzero)
+(define-simple-alias qexpt (q exponent) qzero)
+(define-simple-alias qunit (q) qzero)
+(define-simple-alias qunit* (q) qzero)
+(define-simple-alias qmix (a b tt) qzero)
+(define-simple-alias qnlerp (a b tt) qzero)
+(define-simple-alias qslerp (a b tt) qzero)
+(define-simple-alias q+* (a b s) qzero)
+(define-alias qrand () `(!qrand (quat)))
+(define-alias qeuler (q) `(!qeuler (*as ,q 'vec3) ,q))
+
+(define-alias qmat (q &optional m)
+  `(!qmat (or ,m (*as ,q 'mat3)) ,q))
+
+(define-alias qfrom-mat (m)
+  `(!qfrom-mat (*as ,m 'quat) ,m))
+
+(define-alias qaxis (q)
+  `(vunit ,q))
+
+(define-alias (setf qaxis) (value q)
+  (let ((v (gensym "VALUE")))
+    `(let ((,v ,value))
+       (v<- ,q ,v)
+       ,v)))
+
+(define-alias qlength (q)
+  `(sqrt (qsqrlength ,q)))
+
+(declaim (ftype (function (quat quat vec3 vec3 &optional single-float) (values quat &optional)) !qalign))
+(defun !qalign (out r up n &optional (tolerance 1f-3))
+  (let* ((axis (vec3))
+         (n (vunit n))
+         (cosine (v. up n))
+         (q (quat))
+         (tmp (vec3))
+         (qtmp (quat)))
+    (declare (dynamic-extent n q axis tmp qtmp))
+    ;; first, compute a rotation q that maps up onto n.
+    (nvunit* (!vc axis up n))
+    (unless (v= up n)
+      (!qfrom-angle q axis (acos cosine)))
+    ;; if the angle is too small, then up and n are nearly parallel, so any rotation by pi will do.
+    (unless (< (v2norm (!v- tmp n (!q* qtmp q up))) tolerance)
+      (unless (v= up n)
+        (!qfrom-angle q axis (- (acos cosine)))))
+    ;; We know at this point that q rotates up to n.
+    (let* ((f (q. q r))
+           (g (+ (- (v. r (vc n q)))
+                 (* -1 (qw q) (v. r n))
+                 (* (qw r) (v. n q))))
+           ;; combine the angles:
+           (p (* (signum f) (sqrt (+ (* f f) (* g g)))))
+           (phi (atan (/ (- g) f)))
+           (minimal-a nil)
+           (minimal-value most-positive-fixnum))
+      (labels ((s (a)
+                 (!qfrom-angle qtmp n a))
+               (d (q1 q2) ; d is the geodesic distance between two quaternions
+                 (acos (clamp -1 (- (* 2 (expt (q. q1 q2) 2)) 1) 1)))
+               (try (a)
+                 (let ((new-value (d r (!q* qtmp (s (- a)) q))))
+                   (when (< new-value minimal-value)
+                     (setf minimal-value new-value
+                           minimal-a a)))))
+        ;; the matrix r' is of the form r' = s(- a) q.
+        ;; it is possible to analytically find the two values of a that minimise C(a)=d( s(- a) q, r).
+        ;; test each of them in turn and return the one that minimises the geodesic distance
+        ;; there are four situations to consider: the two values of a for which the derivative of C(a) vanishes, and C(a) being 1 or -1.
+        ;; C(a) = p cos (a/2 + phi)
+        (try (* -2 phi))                ; dC/da=0
+        (unless (< (abs p) 1)
+          ;; solutions to C(a) = +-1 exist, so push them
+          ;; C = +1
+          (try (+ (* -2 phi) (* 2 (acos (/ p)))))
+          (try (- (* -2 phi) (* 2 (acos (/ p)))))
+          ;; C = -1
+          (try (+ (* -2 phi) (* 2 (acos (/ -1 p)))))
+          (try (- (* -2 phi) (* 2 (acos (/ -1 p))))))
+        (!q* out (s (- minimal-a)) q)))))
+
+(declaim (inline nqalign qalign))
+(defun nqalign (r up n &optional (tolerance 1f-3))
+  (!qalign r r up n tolerance))
+
+(defun qalign (r up n &optional (tolerance 1f-3))
+  (!qalign (quat) r up n tolerance))
