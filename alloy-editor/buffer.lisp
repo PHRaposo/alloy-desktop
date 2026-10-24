@@ -29,6 +29,10 @@
    (generation        :accessor %generation        :reader buffer-generation :initform 0)
    (first-changed-line :accessor %first-changed-line :reader buffer-first-changed-line
                        :initform nil)
+   (last-changed-line :accessor %last-changed-line :initform nil
+                      :documentation "Last logical line, in the present numbering, the edits since the first changed line was last taken changed or made; NIL when unknown.")
+   (changed-line-delta :accessor %changed-line-delta :initform 0
+                       :documentation "Lines those edits added, net, the lines under the last changed one moving by as many.")
    (modified-p        :accessor buffer-modified-p  :initform nil)
    (read-only-p       :accessor buffer-read-only-p :initform nil
                       :documentation "True while every edit is refused.")
@@ -227,12 +231,27 @@
           (%line-gap-end buffer) capacity
           (%line-shift buffer) 0)))
 
-(defun %note-changed-line (buffer line)
-  (let ((current (%first-changed-line buffer)))
+(defun %note-changed-line (buffer line &optional (old-last line) (new-last line))
+  "Note an edit that changed LINE to OLD-LAST and left LINE to NEW-LAST in their place, on top of the edits noted since the last take: the first changed line, the last in the present numbering, and the net lines added."
+  (let ((current (%first-changed-line buffer))
+        (last (%last-changed-line buffer))
+        (shift (- new-last old-last)))
+    (cond ((null current)
+           (setf (%last-changed-line buffer) new-last
+                 (%changed-line-delta buffer) shift))
+          (last
+           ;; the last changed line so far, renumbered by this edit
+           (setf (%last-changed-line buffer)
+                 (max new-last (cond ((< last line) last)
+                                     ((> last old-last) (+ last shift))
+                                     (t new-last))))
+           (incf (%changed-line-delta buffer) shift)))
     (setf (%first-changed-line buffer) (if current (min current line) line))))
 
 (defun buffer-take-first-changed-line (buffer)
   "First logical line invalidated since the last call, then forgets it; NIL when none."
+  (setf (%last-changed-line buffer) nil
+        (%changed-line-delta buffer) 0)
   (prog1 (%first-changed-line buffer)
     (setf (%first-changed-line buffer) nil)))
 
@@ -294,7 +313,7 @@
             when (char= (char string i) #\Linefeed)
             do (setf (aref lines (%line-gap-start buffer)) (+ index i 1))
                (incf (%line-gap-start buffer))))
-    (%note-changed-line buffer line)))
+    (%note-changed-line buffer line line (+ line breaks))))
 
 (defun %lines-delete (buffer start end)
   (let ((first-line (%find-line buffer start))
@@ -302,7 +321,7 @@
     (%move-line-gap buffer (1+ first-line))
     (incf (%line-gap-end buffer) (- last-line first-line))
     (decf (%line-shift buffer) (- end start))
-    (%note-changed-line buffer first-line)))
+    (%note-changed-line buffer first-line last-line first-line)))
 
 (defun %apply-insert (buffer index string)
   (let ((length (length string)))
@@ -535,7 +554,9 @@
           (%redo buffer) '()
           (%boundary-p buffer) t
           (buffer-modified-p buffer) nil
-          (%first-changed-line buffer) 0)
+          (%first-changed-line buffer) 0
+          ;; a whole new document: no range of it is known to be left alone
+          (%last-changed-line buffer) nil)
     (incf (%generation buffer))
     (incf (%revision buffer)))
   (%revision buffer))

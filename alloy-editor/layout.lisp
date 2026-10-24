@@ -120,6 +120,8 @@
    (observer  :initarg :observer :initform nil :accessor layout-observer
               :documentation "Called with the first line an edit invalidated and the amount the lines under it moved, so anything else kept per line is renumbered by the same reading of that edit.")
    (cache     :accessor %cache  :initform (make-hash-table :test 'eql))
+   (changed   :accessor %changed-range :initform nil
+              :documentation "(FIRST OLD-LAST NEW-LAST) of the lines the edits of the last sync changed, the old numbering and the new, or NIL when that sync knew no such range; what the observer may read while it is called.")
    (revision  :accessor %revision-at)
    (generation :accessor %generation-at)
    (line-count :accessor %line-count-at))
@@ -139,8 +141,8 @@
     (clrhash (%cache layout)))
   (setf (slot-value layout 'context) context))
 
-(defun %resync-cache (layout first delta)
-  "Keep what the edit left alone."
+(defun %resync-cache (layout first delta &optional (last-dirty (and delta (+ first (max 0 (- delta))))))
+  "Keep what the edit left alone: the lines above FIRST, and the lines under LAST-DIRTY of the old numbering, renumbered by DELTA."
   (let ((cache (%cache layout)))
     (if (null delta)
         (let ((stale '()))
@@ -149,8 +151,7 @@
                      (when (>= line first) (push line stale)))
                    cache)
           (dolist (line stale) (remhash line cache)))
-        (let ((last-dirty (+ first (max 0 (- delta))))
-              (fresh (make-hash-table :test 'eql :size (hash-table-count cache))))
+        (let ((fresh (make-hash-table :test 'eql :size (hash-table-count cache))))
           (maphash (lambda (line entry)
                      (cond ((< line first) (setf (gethash line fresh) entry))
                            ((> line last-dirty) (setf (gethash (+ line delta) fresh) entry))))
@@ -162,8 +163,17 @@
   (let* ((buffer (layout-buffer layout))
          (revision (buffer-revision buffer)))
     (unless (= revision (%revision-at layout))
-      (let ((first (buffer-take-first-changed-line buffer))
-            (steps (- revision (%revision-at layout))))
+      (let* ((last (%last-changed-line buffer))
+             (net (%changed-line-delta buffer))
+             (first (buffer-take-first-changed-line buffer))
+             (steps (- revision (%revision-at layout)))
+             ;; the lines every mutation since the last look changed, as the buffer
+             ;; gathered them: what lies outside them is only renumbered, however many
+             ;; mutations there were
+             (range (and first last
+                         (= (buffer-generation buffer) (%generation-at layout))
+                         (= net (- (buffer-line-count buffer) (%line-count-at layout)))
+                         (list first (- last net) last))))
         (multiple-value-bind (from delta)
             (cond ((null first) (values 0 nil))
                   ;; a document put in place of the one before it renumbers nothing:
@@ -174,7 +184,10 @@
                   ((= steps 1)
                    (values first (- (buffer-line-count buffer) (%line-count-at layout))))
                   (t (values first nil)))
-          (%resync-cache layout from delta)
+          (if range
+              (%resync-cache layout first net (second range))
+              (%resync-cache layout from delta))
+          (setf (%changed-range layout) range)
           (let ((observer (layout-observer layout)))
             (when observer (funcall observer from delta)))))
       (setf (%revision-at layout) revision

@@ -36,8 +36,12 @@
   ((editor::single-line-p :initform t))
   (:documentation "A text pane held to one line, as a field of a form."))
 
-(defclass text-edit-view (text-pane) ()
-  (:documentation "A text pane over a whole document."))
+(defclass text-edit-view (text-pane scroll-mixin)
+  ((scroll-reported :initform (cons 0 0)
+                    :documentation "(X . Y) of the scroll last told to SCROLL-CHANGED.")
+   (bars-read :initform nil
+              :documentation "(HEIGHT . TOP) of the content the bars were last drawn for."))
+  (:documentation "A text pane over a whole document, with the window's scroll bars its host asks for (:SCROLLBARS)."))
 
 (defclass editor-scrollbar (editor:scrollbar) ())
 
@@ -230,6 +234,16 @@
            (editor:text-view-refresh-caret pane))))
   (%draw-pane-frame renderer pane))
 
+;;; The pane holding the keyboard runs the desktop's blink cycle (text/caret.lisp:
+;;; tick-caret-blink) from its own frames, so any window of the desktop blinks its caret
+;;; with no host ticking it; a frame between two flips marks nothing.
+(defmethod org.shirakumo.alloy.animation:update :after ((pane text-pane) dt)
+  (declare (ignore dt))
+  (when (eql :strong (alloy:focus pane))
+    (let ((window (element-window pane)))
+      (when window
+        (tick-caret-blink window #'strong-focus-pane)))))
+
 (defmethod alloy:handle :after ((event alloy:text-event) (pane text-pane))
   (when (eql :strong (alloy:focus pane)) (reset-caret-blink)))
 
@@ -270,5 +284,128 @@
     ;; moved the origin to the pane's corner
     (when color
       (alloy:with-unit-parent pane
-        (dolist (shape (%pane-frame renderer pane color))
-          (alloy:render renderer shape))))))
+        (if (editor:text-view-gutter-p pane)
+            ;; the column of line numbers paints its ground and rule over the rows' depth
+            ;; (alloy-editor/view.lisp: %view-place-gutter-chrome, at 4 and 5): the top, bottom
+            ;; and left edges, which cross that column, go over it; the right one stays under
+            ;; the glyphs
+            (destructuring-bind (top bottom left right) (%pane-frame renderer pane color)
+              (simple:with-pushed-transforms (renderer)
+                (incf (simple:z-index renderer) 6)
+                (alloy:render renderer top)
+                (alloy:render renderer bottom)
+                (alloy:render renderer left))
+              (alloy:render renderer right))
+            (dolist (shape (%pane-frame renderer pane color))
+              (alloy:render renderer shape)))))))
+
+;;; ------------------------------------------------------------------ the scroll bars
+
+;;; A text-edit-view scrolls as every pane of the window does (view/scroll.lisp:
+;;; SCROLL-MIXIN), over one place: the view's own.  The window's scrolling reads and
+;;; writes it in device pixels through SCROLL-OFFSET, whose slot is never used here.
+;;; Only the vertical travel is coupled: the content is reported as wide as the narrowest
+;;; viewport, so no horizontal bar appears and the view keeps its horizontal travel.
+
+(defvar *scroll-writing* nil
+  "The text-edit-view whose place SET-SCROLL is writing: SET-SCROLL tells of that move itself.")
+
+;;; a pane its host gives no bars stays out of the window's scrolling altogether
+(defmethod scroll-passive-p ((pane text-edit-view))
+  (null (scrollbars pane)))
+
+;;; The view cuts its drawing itself, short of the bars (the render :around for
+;;; editor:text-view, which hands its rect over as an extent).  The cut the window's
+;;; scrolling asks for again, on the whole pane (view/render.lisp: render :around for
+;;; scroll-mixin), would be a second cut at the same depth, which the renderer refuses.
+(defmethod alloy:constrain-visibility ((pane text-edit-view) (renderer alloy:renderer))
+  nil)
+
+;;; The view draws its shapes as every presented element does, and that is all it
+;;; draws: the drawing pass of the window's scrolling (view/render.lisp: render for
+;;; scroll-mixin) is the one of a layout, whose children a text view does not have.
+(defmethod alloy:render ((renderer presentations:renderer) (pane text-edit-view))
+  (render-presentation-shapes renderer pane))
+
+(defmethod scroll-offset ((pane text-edit-view))
+  ;; a view of another family answers no place, as it shows no bar
+  (if (eq (editor:text-view-gesture-policy pane) :classic)
+      (alloy:px-point (editor:text-view-scroll-x pane) (editor:text-view-scroll-top pane))
+      (alloy:px-point 0 0)))
+
+(defmethod (setf scroll-offset) (offset (pane text-edit-view))
+  (let ((*scroll-writing* pane))
+    (unless (= (alloy:pxy offset) (scroll-y pane))
+      (setf (editor:text-view-scroll-top pane) (alloy:pxy offset))))
+  (setf (slot-value pane 'scroll-reported) (cons (scroll-x pane) (scroll-y pane)))
+  offset)
+
+(defmethod scroll-content-size ((pane text-edit-view))
+  ;; as wide as the viewport left beside a vertical bar; as tall as the view's content,
+  ;; which a view of another family, or one not laid out yet, does not answer
+  (multiple-value-bind (width height) (scroll-view-size pane)
+    (values (- width *scrollbar-track-px*)
+            (if (and (eq (editor:text-view-gesture-policy pane) :classic)
+                     (editor:text-view-layout pane))
+                (editor:text-view-content-height pane)
+                height))))
+
+;;; the place moved by the wheel, a key, the caret or a refit: the bars follow it and the
+;;; host is told, as SET-SCROLL tells of its own moves
+(defmethod editor:text-view-scrolled ((pane text-edit-view))
+  (when (scrollbars pane)
+    (mark-scrollbars pane)
+    (unless (eq pane *scroll-writing*)
+      (let ((x (scroll-x pane))
+            (y (scroll-y pane))
+            (reported (slot-value pane 'scroll-reported)))
+        (setf (slot-value pane 'scroll-reported) (cons x y))
+        (unless (= x (car reported)) (scroll-changed pane :horizontal :move x))
+        (unless (= y (cdr reported)) (scroll-changed pane :vertical :move y))))))
+
+;;; The bands the bars cover are the bars': a press, a move or a release there goes on to
+;;; them, though the pane holding the keyboard is handed every event first, unless the pane
+;;; holds the pointer for a press of its own.  The wheel stays the pane's over its bars too.
+;;; One method per kind of event, each outranking the pane's own (pointer-down and
+;;; pointer-up :around for text-pane).  NIL, not a decline: these run outside the toolkit's
+;;; own restart for the call.
+(macrolet ((bars-take (class)
+             `(defmethod alloy:handle :around ((event ,class) (pane text-edit-view))
+                (let ((right (editor:text-view-reserve-right pane))
+                      (bottom (editor:text-view-reserve-bottom pane))
+                      (at (alloy:location event)))
+                  (if (and (or (plusp right) (plusp bottom))
+                           (not (eq pane (pointer-capture (pointer-state))))
+                           (alloy:with-unit-parent pane
+                             (alloy::with-global-bounds (bounds pane)
+                               (and (alloy:contained-p at bounds)
+                                    (or (>= (alloy:pxx at) (- (+ (alloy:pxx bounds) (alloy:pxw bounds)) right))
+                                        (< (alloy:pxy at) (+ (alloy:pxy bounds) bottom)))))))
+                      nil
+                      (call-next-method))))))
+  (bars-take alloy:pointer-down)
+  (bars-take alloy:pointer-up)
+  (bars-take alloy:pointer-move)
+  (bars-take alloy:pointer-double-click))
+
+;;; The content of a wrapped view is measured a slice a frame after its width changed
+;;; (alloy-editor/view.lisp: animation:update :after for text-view), which moves no text:
+;;; the bars are drawn again when the height or the place they read has changed.
+(defmethod org.shirakumo.alloy.animation:update :after ((pane text-edit-view) dt)
+  (declare (ignore dt))
+  (when (and (scrollbars pane) (editor:text-view-layout pane)
+             (eq (editor:text-view-gesture-policy pane) :classic))
+    (let ((height (editor:text-view-content-height pane))
+          (top (editor:text-view-scroll-top pane))
+          (read (slot-value pane 'bars-read)))
+      (unless (and read (= height (car read)) (= top (cdr read)))
+        (setf (slot-value pane 'bars-read) (cons height top))
+        (mark-scrollbars pane)))))
+
+;;; the bands the bars cover, decided in this same pass by the window's scrolling
+;;; (view/render.lisp: prepare-for-render :before for scroll-mixin): the text gives
+;;; them up in the frame the bars appear
+(defmethod alloy:prepare-for-render :after ((pane text-edit-view) (renderer alloy:renderer))
+  (multiple-value-bind (horizontal vertical) (scrollbar-axes pane)
+    (setf (editor:text-view-reserve-right pane) (if vertical *scrollbar-track-px* 0.0)
+          (editor:text-view-reserve-bottom pane) (if horizontal *scrollbar-track-px* 0.0))))

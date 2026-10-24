@@ -114,6 +114,16 @@
                  :documentation "(INDEX . ROWS) of a placement asked for before the view was laid out.")
    (trailing-lines :initform nil :accessor text-view-trailing-lines
                    :documentation "Empty rows a :CLASSIC view's content keeps under its last line once it is taller than the view, or NIL for one when the text ends with a Linefeed and none otherwise.")
+   (reserve-right :initform 0.0 :reader text-view-reserve-right
+                  :documentation "Device pixels along the right edge that a host's chrome covers: the rows are laid out and cut short of them.")
+   (reserve-bottom :initform 0.0 :reader text-view-reserve-bottom
+                   :documentation "Device pixels along the bottom edge that a host's chrome covers: the viewport ends above them.")
+   (extent-kept :initform nil
+                :documentation "(LAYOUT REVISION CONTEXT HEIGHT TRAILING WIDTH-OUT . HEIGHT-OUT) of the extent last measured.")
+   (row-counts :initform nil
+               :documentation "The visual rows of every logical line of a wrapped document, kept across its edits once asked for (ROW-COUNTS), or NIL.")
+   (reported-place :initform nil
+                   :documentation "(LINE ROW SCROLL-Y X-OFFSET) of the place TEXT-VIEW-SCROLLED was last called for.")
    (wrap-p     :initarg :wrap-p :initform t     :reader text-view-wrap-p)
    (font       :initarg :font                   :reader text-view-font)
    (font-size  :initarg :font-size              :reader text-view-font-size)
@@ -387,7 +397,13 @@
   "Device pixels a row has to itself."
   (max 1.0 (- (org.shirakumo.alloy:pxw (org.shirakumo.alloy:bounds view))
               (%view-text-x view)
-              (slot-value view 'marker-width))))
+              (slot-value view 'marker-width)
+              (slot-value view 'reserve-right))))
+
+(defun %view-height (view)
+  "Device pixels of the viewport's height: the view's own, less the band a host's chrome covers along the bottom."
+  (- (org.shirakumo.alloy:pxh (org.shirakumo.alloy:bounds view))
+     (slot-value view 'reserve-bottom)))
 
 (defun %italic-lean (data)
   "Device pixels the toolkit draws a slanted glyph to the RIGHT of where its pen put it (alloy renderers/opengl/msdf.lisp."
@@ -441,6 +457,32 @@
                               :wrap-width (when (slot-value view 'wrap-p) width)
                               :halign :start)))))
 
+(defstruct (row-counts (:constructor %make-row-counts (layout context counts total gap-start gap-end))
+                       (:copier nil)
+                       (:predicate nil))
+  "The visual rows of every logical line of a wrapped document under one LAYOUT, kept across the document's edits: COUNTS holds them by line with a gap where the edits are, -1 for a line edited since it was measured; TOTAL is the sum of those held; ANCHOR-ROWS the rows above ANCHOR-LINE; PENDING, (FIRST . LAST), the lines waiting to be measured, or NIL.  The counts are those of CONTEXT from the line CURSOR on, estimates measured in another context or none, refined a slice a frame; CURSOR is NIL once every count is exact."
+  layout context counts total gap-start gap-end (anchor-line 0) (anchor-rows 0) (pending nil) (cursor nil) (rested nil))
+
+(defparameter *row-count-slice-seconds* 0.001
+  "Seconds a frame spends measuring the rows of a wrapped document while the kept counts are still estimates.")
+
+(defun %row-count (kept line)
+  "The visual rows of LINE that KEPT holds."
+  (let ((gap-start (row-counts-gap-start kept)))
+    (aref (row-counts-counts kept)
+          (if (< line gap-start) line (+ line (- (row-counts-gap-end kept) gap-start))))))
+
+(defun %row-count-set (kept line rows)
+  "Hold ROWS as the visual rows of LINE in KEPT, its total and the rows above its anchor following."
+  (let* ((counts (row-counts-counts kept))
+         (gap-start (row-counts-gap-start kept))
+         (raw (if (< line gap-start) line (+ line (- (row-counts-gap-end kept) gap-start))))
+         (change (- rows (max 0 (aref counts raw)))))
+    (setf (aref counts raw) rows)
+    (incf (row-counts-total kept) change)
+    (when (< line (row-counts-anchor-line kept))
+      (incf (row-counts-anchor-rows kept) change))))
+
 (defun %view-sync-context (view)
   "Re-measure from a context that matches the current width and font, and hand the layout over to it."
   (let ((new (%view-build-context view))
@@ -456,11 +498,83 @@
            (if (slot-value view 'layout)
                (setf (layout-context (slot-value view 'layout)) new)
                (when (slot-value view 'buffer)
-                 (setf (slot-value view 'layout)
-                       (make-layout (slot-value view 'buffer) new))
-                 (setf (layout-observer (slot-value view 'layout))
-                       (lambda (first delta)
-                         (mode-invalidate (slot-value view 'mode) view first delta)))))
+                 (let ((layout (make-layout (slot-value view 'buffer) new)))
+                   (setf (slot-value view 'layout) layout)
+                   (setf (layout-observer layout)
+                         (lambda (first delta)
+                           (mode-invalidate (slot-value view 'mode) view first delta)
+                           (let ((kept (slot-value view 'row-counts))
+                                 (range (%changed-range layout)))
+                             (when kept
+                               (if (and range
+                                        ;; the counts are those of the document before these edits
+                                        (= (+ (row-counts-gap-start kept)
+                                              (- (length (row-counts-counts kept)) (row-counts-gap-end kept)))
+                                           (- (buffer-line-count (layout-buffer layout))
+                                              (- (third range) (second range)))))
+                                   ;; the edited lines leave the kept counts, their places wait to
+                                   ;; be measured, and the gap of the counts stands where they are
+                                   (destructuring-bind (from old-last new-last) range
+                                     (let* ((counts (row-counts-counts kept))
+                                            (gap-start (row-counts-gap-start kept))
+                                            (gap-end (row-counts-gap-end kept))
+                                            (removed (1+ (- old-last from)))
+                                            (added (1+ (- new-last from)))
+                                            (anchor (row-counts-anchor-line kept))
+                                            (pending (row-counts-pending kept)))
+                                       (cond ((< from gap-start)
+                                              (let ((moved (- gap-start from)))
+                                                (replace counts counts :start1 (- gap-end moved) :start2 from :end2 gap-start)
+                                                (setf gap-start from gap-end (- gap-end moved))))
+                                             ((> from gap-start)
+                                              (let ((moved (- from gap-start)))
+                                                (replace counts counts :start1 gap-start :start2 gap-end :end2 (+ gap-end moved))
+                                                (setf gap-start from gap-end (+ gap-end moved)))))
+                                       (let ((gone 0) (gone-above 0))
+                                         (dotimes (k removed)
+                                           (let ((rows (aref counts (+ gap-end k))))
+                                             (unless (minusp rows)
+                                               (incf gone rows)
+                                               (when (< (+ from k) anchor) (incf gone-above rows)))))
+                                         (incf gap-end removed)
+                                         (decf (row-counts-total kept) gone)
+                                         (cond ((<= anchor from))
+                                               ((> anchor old-last)
+                                                (decf (row-counts-anchor-rows kept) gone-above)
+                                                (incf (row-counts-anchor-line kept) (- new-last old-last)))
+                                               (t
+                                                (decf (row-counts-anchor-rows kept) gone-above)
+                                                (setf (row-counts-anchor-line kept) from)))
+                                         ;; the refinement goes on from the same line of the text
+                                         (let ((cursor (row-counts-cursor kept)))
+                                           (when cursor
+                                             (setf (row-counts-cursor kept)
+                                                   (cond ((<= cursor from) cursor)
+                                                         ((> cursor old-last) (+ cursor (- new-last old-last)))
+                                                         (t from))))))
+                                       (when (< (- gap-end gap-start) added)
+                                         (let* ((tail (- (length counts) gap-end))
+                                                (capacity (max 64 (* 2 (+ gap-start tail added))))
+                                                (fresh (make-array capacity :element-type 'fixnum :initial-element 0)))
+                                           (replace fresh counts :end2 gap-start)
+                                           (replace fresh counts :start1 (- capacity tail) :start2 gap-end)
+                                           (setf counts fresh
+                                                 gap-end (- capacity tail)
+                                                 (row-counts-counts kept) fresh)))
+                                       (fill counts -1 :start gap-start :end (+ gap-start added))
+                                       (setf (row-counts-gap-start kept) (+ gap-start added)
+                                             (row-counts-gap-end kept) gap-end
+                                             (row-counts-pending kept)
+                                             (if pending
+                                                 (flet ((renumbered (line)
+                                                          (cond ((< line from) line)
+                                                                ((> line old-last) (+ line (- new-last old-last)))
+                                                                (t from))))
+                                                   (cons (min from (renumbered (car pending)))
+                                                         (max new-last (renumbered (cdr pending)))))
+                                                 (cons from new-last)))))
+                                   ;; no range the edits are known to stay within: counted anew
+                                   (setf (slot-value view 'row-counts) nil)))))))))
            t))))
 
 ;;; ------------------------------------------------------------------ the shapes
@@ -1270,6 +1384,18 @@
       (%view-place-caret view)
       (mode-place (slot-value view 'mode) view)
       (%view-place-completion view))
+    ;; the hook hears of every place that moved, whoever moved it; the first layout moves nothing
+    (let ((reported (slot-value view 'reported-place))
+          (line (slot-value view 'top-line))
+          (row (slot-value view 'top-row))
+          (y (slot-value view 'scroll-y))
+          (x (slot-value view 'x-offset)))
+      (unless (and reported
+                   (eql line (first reported)) (eql row (second reported))
+                   (eql y (third reported)) (eql x (fourth reported)))
+        (setf (slot-value view 'reported-place) (list line row y x))
+        (when reported
+          (text-view-scrolled view))))
     (org.shirakumo.alloy:mark-for-render view)))
 
 (defun (setf text-view-caret) (index view)
@@ -1380,6 +1506,20 @@
   (%view-relayout view)
   pitch)
 
+(defun (setf text-view-reserve-right) (pixels view)
+  "Leave PIXELS device pixels along the right edge to a host's chrome, laying the rows out and cutting them short of them."
+  (unless (= pixels (slot-value view 'reserve-right))
+    (setf (slot-value view 'reserve-right) (float pixels 0f0))
+    (%view-relayout view))
+  pixels)
+
+(defun (setf text-view-reserve-bottom) (pixels view)
+  "Leave PIXELS device pixels along the bottom edge to a host's chrome, ending the viewport above them."
+  (unless (= pixels (slot-value view 'reserve-bottom))
+    (setf (slot-value view 'reserve-bottom) (float pixels 0f0))
+    (%view-relayout view))
+  pixels)
+
 ;;; ------------------------------------------------------------------ scrolling
 
 (defun text-view-scroll-by-rows (view rows)
@@ -1411,6 +1551,108 @@
         (slot-value view 'top-row) 0)
   (%view-relayout view)
   view)
+
+(defgeneric text-view-scrolled (view)
+  (:documentation "Called once each time VIEW is laid out at another place than the one it stood at, whatever moved it: the wheel, a key, the caret it follows, a drag, a refit, a writer of the place.  The first layout of a view moves nothing.")
+  (:method ((view text-view))
+    nil))
+
+(defun %view-row-counts (view)
+  "The visual rows of every logical line of VIEW's wrapped document (ROW-COUNTS), kept across the edits: the lines an edit changed are measured the next time they are asked for.  A document laid out anew takes every line for one row, and a new measuring context keeps the counts it had, as estimates; either way the lines on screen are measured now and the rest a slice a frame (ANIMATION:UPDATE :AFTER for TEXT-VIEW), never the whole document at once."
+  (let ((layout (slot-value view 'layout)))
+    ;; what the buffer changed since the last look reaches the counts through the observer
+    (%sync layout)
+    (let ((kept (slot-value view 'row-counts))
+          (context (slot-value view 'context)))
+      (unless (and kept (eq (row-counts-layout kept) layout))
+        (let* ((count (buffer-line-count (layout-buffer layout)))
+               (counts (make-array (max 64 (* 2 count)) :element-type 'fixnum :initial-element 1)))
+          (setf kept (%make-row-counts layout nil counts count count (length counts))
+                (slot-value view 'row-counts) kept)))
+      (unless (eq (row-counts-context kept) context)
+        ;; the frame that laid the view out anew measured the lines on screen: the slices
+        ;; start with the next one
+        (setf (row-counts-context kept) context
+              (row-counts-cursor kept) 0
+              (row-counts-rested kept) t)
+        (loop with count = (buffer-line-count (layout-buffer layout))
+              for cell across (slot-value view 'visible)
+              when (< (car cell) count)
+                do (%row-count-set kept (car cell) (line-layout-row-count (layout-line layout (car cell))))))
+      (let ((pending (row-counts-pending kept)))
+        (when pending
+          (setf (row-counts-pending kept) nil)
+          (loop for line from (car pending)
+                  to (min (cdr pending) (1- (buffer-line-count (layout-buffer layout))))
+                do (when (minusp (%row-count kept line))
+                     (%row-count-set kept line (line-layout-row-count (layout-line layout line)))))))
+      kept)))
+
+(defun text-view-content-height (view)
+  "Device pixels of the height of what a :CLASSIC VIEW scrolls over, the height TEXT-VIEW-EXTENT answers: every row with the margin above and below it and the trailing rows of a block taller than the view.  Unwrapped, every line is one row and no line is measured; wrapped, the rows of every line are kept across the edits and only the lines an edit changed are measured again.  0 before VIEW is laid out."
+  (let ((layout (slot-value view 'layout)))
+    (if (null layout)
+        0.0
+        (let ((rows (if (slot-value view 'wrap-p)
+                        (row-counts-total (%view-row-counts view))
+                        (buffer-line-count (layout-buffer layout)))))
+          (multiple-value-bind (linefeed extra) (%classic-trailing view rows)
+            (+ (* 2 (slot-value view 'text-inset))
+               (* (- rows (if linefeed 1 0)) (slot-value view 'pitch))
+               extra))))))
+
+(defun text-view-scroll-top (view)
+  "Device pixels of VIEW's content above the top of its viewport, counted from the top of the content, the margin above the first row included: the visual rows above the first visible one times the row pitch, and the pixels the viewport stands into that one.  0 before VIEW is laid out.  Unwrapped, every line is one row; wrapped, the rows are read from the counts kept across the edits (TEXT-VIEW-CONTENT-HEIGHT), from the line asked for last."
+  (let ((layout (slot-value view 'layout)))
+    (if (null layout)
+        0.0
+        (let* ((line (slot-value view 'top-line))
+               (rows (if (slot-value view 'wrap-p)
+                         (let* ((kept (%view-row-counts view))
+                                (from (row-counts-anchor-line kept))
+                                (above (row-counts-anchor-rows kept)))
+                           (cond ((< from line)
+                                  (loop for l from from below line do (incf above (%row-count kept l))))
+                                 ((> from line)
+                                  (loop for l from line below from do (decf above (%row-count kept l)))))
+                           (setf (row-counts-anchor-line kept) line
+                                 (row-counts-anchor-rows kept) above)
+                           above)
+                         line)))
+          (+ (* (+ rows (slot-value view 'top-row)) (slot-value view 'pitch))
+             (slot-value view 'scroll-y))))))
+
+(defun (setf text-view-scroll-top) (pixels view)
+  "Put the top of the viewport of a :CLASSIC VIEW PIXELS device pixels below the top of its content, held within the content, and lay VIEW out; a view not laid out yet is left where it is.  The row the place falls in is found from the line count, or from the counts kept of a wrapped document, never by measuring the lines between."
+  (unless (eq (text-view-gesture-policy view) :classic)
+    (error "(SETF TEXT-VIEW-SCROLL-TOP) places a :CLASSIC view; ~S answers as ~S."
+           view (text-view-gesture-policy view)))
+  (let ((layout (slot-value view 'layout)))
+    (when layout
+      (let* ((pitch (max 1.0 (slot-value view 'pitch)))
+             (count (buffer-line-count (layout-buffer layout)))
+             ;; the visual row whose place holds the viewport top, and how far into it
+             (target (max 0 (floor (- pixels (slot-value view 'text-inset)) pitch))))
+        (if (slot-value view 'wrap-p)
+            (let* ((kept (%view-row-counts view))
+                   (line (row-counts-anchor-line kept))
+                   (above (row-counts-anchor-rows kept)))
+              (loop while (and (plusp line) (> above target))
+                    do (decf line)
+                       (decf above (%row-count kept line)))
+              (loop while (and (< line (1- count)) (>= target (+ above (%row-count kept line))))
+                    do (incf above (%row-count kept line))
+                       (incf line))
+              (setf (row-counts-anchor-line kept) line
+                    (row-counts-anchor-rows kept) above)
+              (let ((row (min (- target above) (max 0 (1- (%row-count kept line))))))
+                (%classic-place view line row
+                                (- pixels (slot-value view 'text-inset) (* (+ above row) pitch)))))
+            (let ((line (min target (1- count))))
+              (%classic-place view line 0 (- pixels (slot-value view 'text-inset) (* line pitch)))))
+        (%classic-clamp view)
+        (%view-relayout view))))
+  pixels)
 
 (defun text-view-row-extent (view)
   "Widest visual row among the VISIBLE lines, in device pixels."
@@ -1518,7 +1760,7 @@
          (inset (slot-value view 'text-inset)))
     (values linefeed
             (if (and (plusp rows)
-                     (< (org.shirakumo.alloy:pxh (org.shirakumo.alloy:bounds view))
+                     (< (%view-height view)
                         (+ inset inset (* (- painted (if linefeed 1 0)) pitch))))
                 (+ (* rows pitch) *classic-follow-margin*)
                 0.0))))
@@ -1528,7 +1770,7 @@
   (let* ((layout (slot-value view 'layout))
          (pitch (max 1.0 (slot-value view 'pitch)))
          (inset (slot-value view 'text-inset))
-         (height (org.shirakumo.alloy:pxh (org.shirakumo.alloy:bounds view)))
+         (height (%view-height view))
          (line (1- (buffer-line-count (layout-buffer layout))))
          (row (1- (line-layout-row-count (layout-line layout line))))
          ;; enough rows counted back from the end to know whether the block is taller
@@ -1569,8 +1811,7 @@
           (and caret
                (multiple-value-bind (x y w h) (text-view-caret-location view caret)
                  (declare (ignore x w))
-                 (and y (<= 0.0 y) (<= (+ y h) (org.shirakumo.alloy:pxh
-                                               (org.shirakumo.alloy:bounds view)))))))))
+                 (and y (<= 0.0 y) (<= (+ y h) (%view-height view))))))))
 
 (defun %classic-follow (view)
   "Travel the least that puts the caret's row, and the caret across it, the follow margin inside the view."
@@ -1581,7 +1822,7 @@
         (unless (text-view-single-line-p view)
           (let* ((margin *classic-follow-margin*)
                  (pitch (slot-value view 'pitch))
-                 (height (org.shirakumo.alloy:pxh (org.shirakumo.alloy:bounds view)))
+                 (height (%view-height view))
                  (top-line (slot-value view 'top-line))
                  (top-row (slot-value view 'top-row))
                  (above (or (< line top-line) (and (= line top-line) (< row top-row))))
@@ -1681,29 +1922,41 @@
   view)
 
 (defun text-view-extent (view)
-  "(values WIDTH HEIGHT) in device pixels of what VIEW holds as a :CLASSIC view scrolls over it: the widest row with the caret and the follow margin beyond it, or the view's own width when the lines wrap, and every row with the margin above and below it and the trailing rows of a block taller than the view.  Every line of the document is measured on each call."
+  "(values WIDTH HEIGHT) in device pixels of what VIEW holds as a :CLASSIC view scrolls over it: the widest row with the caret and the follow margin beyond it, or the width the view lays its rows out in when the lines wrap, and every row with the margin above and below it and the trailing rows of a block taller than the view.  Every line of the document is measured when the document, the layout, the viewport's height or the trailing rows changed since the last call; otherwise the extent last measured is answered."
   (unless (eq (text-view-gesture-policy view) :classic)
     (error "TEXT-VIEW-EXTENT answers for a :CLASSIC view; ~S answers as ~S."
            view (text-view-gesture-policy view)))
   (unless (slot-value view 'layout)
     (error "TEXT-VIEW-EXTENT: ~S has not been laid out yet." view))
   (let* ((layout (slot-value view 'layout))
-         (count (buffer-line-count (layout-buffer layout)))
-         (rows 0)
-         (widest 0.0))
-    (dotimes (line count)
-      (let ((line-layout (layout-line layout line)))
-        (incf rows (line-layout-row-count line-layout))
-        (unless (text-view-wrap-p view)
-          (dotimes (row (line-layout-row-count line-layout))
-            (setf widest (max widest (line-layout-row-width line-layout row)))))))
-    (multiple-value-bind (linefeed extra) (%classic-trailing view rows)
-      (values (if (text-view-wrap-p view)
-                  (org.shirakumo.alloy:pxw (org.shirakumo.alloy:bounds view))
-                  (+ (%view-text-x view) widest (%view-caret-width view) *classic-follow-margin*))
-              (+ (* 2 (slot-value view 'text-inset))
-                 (* (- rows (if linefeed 1 0)) (slot-value view 'pitch))
-                 extra)))))
+         (revision (buffer-revision (layout-buffer layout)))
+         (context (slot-value view 'context))
+         (height (%view-height view))
+         (trailing (text-view-trailing-lines view))
+         (kept (slot-value view 'extent-kept)))
+    (if (and kept (eq (first kept) layout) (eql (second kept) revision) (eq (third kept) context)
+             (= (fourth kept) height) (eql (fifth kept) trailing))
+        (values (sixth kept) (nthcdr 6 kept))
+        (let ((count (buffer-line-count (layout-buffer layout)))
+              (rows 0)
+              (widest 0.0))
+          (dotimes (line count)
+            (let ((line-layout (layout-line layout line)))
+              (incf rows (line-layout-row-count line-layout))
+              (unless (text-view-wrap-p view)
+                (dotimes (row (line-layout-row-count line-layout))
+                  (setf widest (max widest (line-layout-row-width line-layout row)))))))
+          (multiple-value-bind (linefeed extra) (%classic-trailing view rows)
+            (let ((width (if (text-view-wrap-p view)
+                             (- (org.shirakumo.alloy:pxw (org.shirakumo.alloy:bounds view))
+                                (slot-value view 'reserve-right))
+                             (+ (%view-text-x view) widest (%view-caret-width view) *classic-follow-margin*)))
+                  (height-out (+ (* 2 (slot-value view 'text-inset))
+                                 (* (- rows (if linefeed 1 0)) (slot-value view 'pitch))
+                                 extra)))
+              (setf (slot-value view 'extent-kept)
+                    (list* layout revision context height trailing width height-out))
+              (values width height-out)))))))
 
 ;;; ------------------------------------------------------------------ the scrollbar
 
@@ -1787,14 +2040,27 @@
 
 (defmethod org.shirakumo.alloy:render :around ((renderer org.shirakumo.alloy:renderer) (view text-view))
   ;; a pane cuts its own drawing at its rect, so a line the viewport only half
-  ;; holds is half drawn rather than drawn whole
-  (org.shirakumo.alloy:constrain-visibility view renderer)
+  ;; holds is half drawn rather than drawn whole; the bands a host's chrome covers
+  ;; are cut off as well.  The rect is handed over as an extent, the way the toolkit's
+  ;; own constrain-visibility of a layout element hands it (alloy layout.lisp)
+  (let ((right (slot-value view 'reserve-right))
+        (bottom (slot-value view 'reserve-bottom)))
+    (org.shirakumo.alloy::with-global-bounds (bounds view)
+      (org.shirakumo.alloy:constrain-visibility
+       (if (and (zerop right) (zerop bottom))
+           bounds
+           (org.shirakumo.alloy:px-extent (org.shirakumo.alloy:pxx bounds)
+                                          (+ (org.shirakumo.alloy:pxy bounds) bottom)
+                                          (max 0.0 (- (org.shirakumo.alloy:pxw bounds) right))
+                                          (max 0.0 (- (org.shirakumo.alloy:pxh bounds) bottom))))
+       renderer)))
   (call-next-method))
 
 (defmethod org.shirakumo.alloy:handle ((event org.shirakumo.alloy:scroll) (view text-view))
-  ;; the wheel belongs to the pane it stands over, not to the one holding the keyboard
+  ;; the wheel belongs to the pane it stands over, not to the one holding the keyboard;
+  ;; a wheel the view does not take is declined, whatever else its class is
   (cond ((not (org.shirakumo.alloy:contained-p (org.shirakumo.alloy:location event) view))
-         (call-next-method))
+         (org.shirakumo.alloy:decline))
         ((and (eq (text-view-gesture-policy view) :classic)
               (not (text-view-single-line-p view)))
          ;; a notch held with Control or Command is a gesture of its own: taken, no travel
@@ -1807,7 +2073,7 @@
         (t
          (let ((rows (round (* *wheel-rows* (- (org.shirakumo.alloy:dy event))))))
            (if (zerop rows)
-               (call-next-method)
+               (org.shirakumo.alloy:decline)
                (text-view-scroll-by-rows view rows))))))
 
 (defun %view-local-point (view location)
@@ -2113,4 +2379,27 @@
 
 (defmethod org.shirakumo.alloy.animation:update :after ((view text-view) dt)
   (when (slot-value view 'scroll-rate)
-    (%view-autoscroll-tick view dt)))
+    (%view-autoscroll-tick view dt))
+  ;; kept row counts still estimates: one slice of them measured this frame, as many lines
+  ;; as *ROW-COUNT-SLICE-SECONDS* holds and at least one
+  (let ((layout (slot-value view 'layout)))
+    (when (and layout (slot-value view 'row-counts))
+      (%sync layout)
+      (let ((kept (slot-value view 'row-counts)))
+        (when (and kept (row-counts-cursor kept)
+                   (eq (row-counts-layout kept) layout)
+                   (eq (row-counts-context kept) (slot-value view 'context)))
+          (if (row-counts-rested kept)
+              (setf (row-counts-rested kept) nil)
+              (let ((count (buffer-line-count (layout-buffer layout)))
+                    (cursor (row-counts-cursor kept))
+                    (deadline (+ (get-internal-real-time)
+                                 (round (* *row-count-slice-seconds* internal-time-units-per-second)))))
+                (loop while (< cursor count)
+                      ;; measured past the layout's cache, which keeps the lines on screen
+                      do (%row-count-set kept cursor
+                                         (line-layout-row-count (or (gethash cursor (%cache layout))
+                                                                    (%measure-line layout cursor))))
+                         (incf cursor)
+                      until (>= (get-internal-real-time) deadline))
+                (setf (row-counts-cursor kept) (and (< cursor count) cursor)))))))))
