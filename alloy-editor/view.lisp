@@ -122,6 +122,8 @@
                 :documentation "(LAYOUT REVISION CONTEXT HEIGHT TRAILING WIDTH-OUT . HEIGHT-OUT) of the extent last measured.")
    (row-counts :initform nil
                :documentation "The visual rows of every logical line of a wrapped document, kept across its edits once asked for (ROW-COUNTS), or NIL.")
+   (widest-kept :initform nil
+                :documentation "The widest row of an unwrapped document, kept across its edits once asked for (WIDEST-KEPT), or NIL.")
    (reported-place :initform nil
                    :documentation "(LINE ROW SCROLL-Y X-OFFSET) of the place TEXT-VIEW-SCROLLED was last called for.")
    (wrap-p     :initarg :wrap-p :initform t     :reader text-view-wrap-p)
@@ -466,6 +468,12 @@
 (defparameter *row-count-slice-seconds* 0.001
   "Seconds a frame spends measuring the rows of a wrapped document while the kept counts are still estimates.")
 
+(defstruct (widest-kept (:constructor %make-widest-kept (layout context widest line))
+                        (:copier nil)
+                        (:predicate nil))
+  "The widest row of an unwrapped document under one LAYOUT and CONTEXT, kept across the document's edits: WIDEST, the width of the row of LINE; PENDING, (FIRST . LAST), the lines an edit made, waiting to be measured.  While CURSOR is a line, a search a slice a frame goes over the whole document (a layout made anew, or the widest line gone with an edit): WIDEST stands as the estimate and SEARCHED-WIDEST, of SEARCHED-LINE, is what the lines before CURSOR hold."
+  layout context widest line (pending nil) (cursor nil) (searched-widest 0.0) (searched-line nil))
+
 (defun %row-count (kept line)
   "The visual rows of LINE that KEPT holds."
   (let ((gap-start (row-counts-gap-start kept)))
@@ -574,7 +582,38 @@
                                                          (max new-last (renumbered (cdr pending)))))
                                                  (cons from new-last)))))
                                    ;; no range the edits are known to stay within: counted anew
-                                   (setf (slot-value view 'row-counts) nil)))))))))
+                                   (setf (slot-value view 'row-counts) nil))))
+                           ;; the widest row kept follows the same edits: its line renumbered, or
+                           ;; searched for again when the edit took it; the new lines wait to be measured
+                           (let ((wide (slot-value view 'widest-kept))
+                                 (range (%changed-range layout)))
+                             (when wide
+                               (if range
+                                   (destructuring-bind (from old-last new-last) range
+                                     (let ((shift (- new-last old-last))
+                                           (line (widest-kept-line wide))
+                                           (cursor (widest-kept-cursor wide))
+                                           (pending (widest-kept-pending wide)))
+                                       (flet ((renumbered (at)
+                                                (cond ((< at from) at)
+                                                      ((> at old-last) (+ at shift))
+                                                      (t from))))
+                                         (when line
+                                           (if (<= from line old-last)
+                                               (setf (widest-kept-line wide) nil)
+                                               (setf (widest-kept-line wide) (renumbered line))))
+                                         ;; a search that had gone past the edit starts again
+                                         (when (or (and cursor (> cursor from))
+                                                   (and (null cursor) (null (widest-kept-line wide))))
+                                           (setf (widest-kept-cursor wide) 0
+                                                 (widest-kept-searched-widest wide) 0.0
+                                                 (widest-kept-searched-line wide) nil))
+                                         (setf (widest-kept-pending wide)
+                                               (if pending
+                                                   (cons (min from (renumbered (car pending)))
+                                                         (max new-last (renumbered (cdr pending))))
+                                                   (cons from new-last))))))
+                                   (setf (slot-value view 'widest-kept) nil)))))))))
            t))))
 
 ;;; ------------------------------------------------------------------ the shapes
@@ -1588,18 +1627,80 @@
                      (%row-count-set kept line (line-layout-row-count (layout-line layout line)))))))
       kept)))
 
+(defun text-view-content-width (view)
+  "Device pixels of the width of what VIEW travels over left and right.  Unwrapped: the widest row of the document and what stands beside it, the column of line numbers and the margin before the text, the caret's own bar, the follow margin of a :CLASSIC view and the band of the glyph closing a broken row.  The widest row is kept across the edits (WIDEST-KEPT), the lines an edit made measured the next time it is asked for; a document laid out anew starts from the lines on screen, and a search a slice a frame (ANIMATION:UPDATE :AFTER for TEXT-VIEW) goes over the rest, as it does when the widest line goes with an edit, the widest known standing meanwhile.  Wrapped: the width the rows are laid out in.  0 before VIEW is laid out."
+  (let ((layout (slot-value view 'layout)))
+    (cond ((null layout) 0.0)
+          ((slot-value view 'wrap-p)
+           (- (org.shirakumo.alloy:pxw (org.shirakumo.alloy:bounds view)) (slot-value view 'reserve-right)))
+          (t
+           ;; what the buffer changed since the last look reaches the record through the observer
+           (%sync layout)
+           (let ((wide (slot-value view 'widest-kept))
+                 (context (slot-value view 'context))
+                 (count (buffer-line-count (layout-buffer layout))))
+             (flet ((width (line)
+                      (let ((line-layout (layout-line layout line))
+                            (widest 0.0))
+                        (dotimes (row (line-layout-row-count line-layout) widest)
+                          (setf widest (max widest (line-layout-row-width line-layout row)))))))
+               (unless (and wide (eq (widest-kept-layout wide) layout) (eq (widest-kept-context wide) context))
+                 (setf wide (%make-widest-kept layout context 0.0 nil)
+                       (widest-kept-cursor wide) 0
+                       (slot-value view 'widest-kept) wide)
+                 (loop for cell across (slot-value view 'visible)
+                       when (< (car cell) count)
+                         do (let ((w (width (car cell))))
+                              (when (> w (widest-kept-widest wide))
+                                (setf (widest-kept-widest wide) w
+                                      (widest-kept-line wide) (car cell))))))
+               (let ((pending (widest-kept-pending wide)))
+                 (when pending
+                   (setf (widest-kept-pending wide) nil)
+                   (loop for line from (car pending) to (min (cdr pending) (1- count))
+                         do (let ((w (width line))
+                                  (cursor (widest-kept-cursor wide)))
+                              (when (> w (widest-kept-widest wide))
+                                (setf (widest-kept-widest wide) w
+                                      (widest-kept-line wide) line))
+                              ;; a search that went past the line has it to count as well
+                              (when (and cursor (< line cursor) (> w (widest-kept-searched-widest wide)))
+                                (setf (widest-kept-searched-widest wide) w
+                                      (widest-kept-searched-line wide) line))))))
+               (+ (%view-text-x view)
+                  (if (widest-kept-cursor wide)
+                      (max (widest-kept-widest wide) (widest-kept-searched-widest wide))
+                      (widest-kept-widest wide))
+                  (%view-caret-width view)
+                  (if (eq (text-view-gesture-policy view) :classic) *classic-follow-margin* 0)
+                  (slot-value view 'marker-width))))))))
+
+(defun (setf text-view-scroll-left) (pixels view)
+  "Travel the unwrapped lines PIXELS device pixels to the left, held within the document's widest row (TEXT-VIEW-CONTENT-WIDTH), and lay VIEW out; a view not laid out yet is left where it is."
+  (when (slot-value view 'layout)
+    (setf (slot-value view 'x-offset)
+          (max 0.0 (min (float pixels 0f0)
+                        (- (text-view-content-width view)
+                           (- (org.shirakumo.alloy:pxw (org.shirakumo.alloy:bounds view))
+                              (slot-value view 'reserve-right))))))
+    (%view-relayout view))
+  pixels)
+
 (defun text-view-content-height (view)
-  "Device pixels of the height of what a :CLASSIC VIEW scrolls over, the height TEXT-VIEW-EXTENT answers: every row with the margin above and below it and the trailing rows of a block taller than the view.  Unwrapped, every line is one row and no line is measured; wrapped, the rows of every line are kept across the edits and only the lines an edit changed are measured again.  0 before VIEW is laid out."
+  "Device pixels of the height of what VIEW scrolls over.  A :CLASSIC view: the height TEXT-VIEW-EXTENT answers, every row with the margin above and below it and the trailing rows of a block taller than the view.  A view of another family, whose travel ends with its last row at the top: the rows above the last one and the viewport.  Unwrapped, every line is one row and no line is measured; wrapped, the rows of every line are kept across the edits and only the lines an edit changed are measured again.  0 before VIEW is laid out."
   (let ((layout (slot-value view 'layout)))
     (if (null layout)
         0.0
         (let ((rows (if (slot-value view 'wrap-p)
                         (row-counts-total (%view-row-counts view))
                         (buffer-line-count (layout-buffer layout)))))
-          (multiple-value-bind (linefeed extra) (%classic-trailing view rows)
-            (+ (* 2 (slot-value view 'text-inset))
-               (* (- rows (if linefeed 1 0)) (slot-value view 'pitch))
-               extra))))))
+          (if (eq (text-view-gesture-policy view) :classic)
+              (multiple-value-bind (linefeed extra) (%classic-trailing view rows)
+                (+ (* 2 (slot-value view 'text-inset))
+                   (* (- rows (if linefeed 1 0)) (slot-value view 'pitch))
+                   extra))
+              (+ (* (max 0 (1- rows)) (slot-value view 'pitch))
+                 (%view-height view)))))))
 
 (defun text-view-scroll-top (view)
   "Device pixels of VIEW's content above the top of its viewport, counted from the top of the content, the margin above the first row included: the visual rows above the first visible one times the row pitch, and the pixels the viewport stands into that one.  0 before VIEW is laid out.  Unwrapped, every line is one row; wrapped, the rows are read from the counts kept across the edits (TEXT-VIEW-CONTENT-HEIGHT), from the line asked for last."
@@ -1623,34 +1724,40 @@
              (slot-value view 'scroll-y))))))
 
 (defun (setf text-view-scroll-top) (pixels view)
-  "Put the top of the viewport of a :CLASSIC VIEW PIXELS device pixels below the top of its content, held within the content, and lay VIEW out; a view not laid out yet is left where it is.  The row the place falls in is found from the line count, or from the counts kept of a wrapped document, never by measuring the lines between."
-  (unless (eq (text-view-gesture-policy view) :classic)
-    (error "(SETF TEXT-VIEW-SCROLL-TOP) places a :CLASSIC view; ~S answers as ~S."
-           view (text-view-gesture-policy view)))
+  "Put the top of VIEW's viewport PIXELS device pixels below the top of its content, held within the content, and lay VIEW out; a view not laid out yet is left where it is.  A :CLASSIC view goes there to the pixel; a view of another family, which scrolls by whole rows, puts the row whose top is nearest the place at the top, so the place it answers, rounded, takes it back to the same row.  The row is found from the line count, or from the counts kept of a wrapped document, never by measuring the lines between."
   (let ((layout (slot-value view 'layout)))
     (when layout
-      (let* ((pitch (max 1.0 (slot-value view 'pitch)))
+      (let* ((classic (eq (text-view-gesture-policy view) :classic))
+             (pitch (max 1.0 (slot-value view 'pitch)))
              (count (buffer-line-count (layout-buffer layout)))
-             ;; the visual row whose place holds the viewport top, and how far into it
-             (target (max 0 (floor (- pixels (slot-value view 'text-inset)) pitch))))
-        (if (slot-value view 'wrap-p)
-            (let* ((kept (%view-row-counts view))
-                   (line (row-counts-anchor-line kept))
-                   (above (row-counts-anchor-rows kept)))
-              (loop while (and (plusp line) (> above target))
-                    do (decf line)
-                       (decf above (%row-count kept line)))
-              (loop while (and (< line (1- count)) (>= target (+ above (%row-count kept line))))
-                    do (incf above (%row-count kept line))
-                       (incf line))
-              (setf (row-counts-anchor-line kept) line
-                    (row-counts-anchor-rows kept) above)
-              (let ((row (min (- target above) (max 0 (1- (%row-count kept line))))))
-                (%classic-place view line row
-                                (- pixels (slot-value view 'text-inset) (* (+ above row) pitch)))))
-            (let ((line (min target (1- count))))
-              (%classic-place view line 0 (- pixels (slot-value view 'text-inset) (* line pitch)))))
-        (%classic-clamp view)
+             ;; the visual row whose place holds the viewport top (:CLASSIC), or whose top is
+             ;; nearest it
+             (target (max 0 (if classic
+                                (floor (- pixels (slot-value view 'text-inset)) pitch)
+                                (round pixels pitch)))))
+        (multiple-value-bind (line row above)
+            (if (slot-value view 'wrap-p)
+                (let* ((kept (%view-row-counts view))
+                       (line (row-counts-anchor-line kept))
+                       (above (row-counts-anchor-rows kept)))
+                  (loop while (and (plusp line) (> above target))
+                        do (decf line)
+                           (decf above (%row-count kept line)))
+                  (loop while (and (< line (1- count)) (>= target (+ above (%row-count kept line))))
+                        do (incf above (%row-count kept line))
+                           (incf line))
+                  (setf (row-counts-anchor-line kept) line
+                        (row-counts-anchor-rows kept) above)
+                  (values line (min (- target above) (max 0 (1- (%row-count kept line)))) above))
+                (let ((line (min target (1- count))))
+                  (values line 0 line)))
+          (cond (classic
+                 (%classic-place view line row
+                                 (- pixels (slot-value view 'text-inset) (* (+ above row) pitch)))
+                 (%classic-clamp view))
+                (t
+                 (setf (slot-value view 'top-line) line
+                       (slot-value view 'top-row) row))))
         (%view-relayout view))))
   pixels)
 
@@ -2402,4 +2509,34 @@
                                                                     (%measure-line layout cursor))))
                          (incf cursor)
                       until (>= (get-internal-real-time) deadline))
-                (setf (row-counts-cursor kept) (and (< cursor count) cursor)))))))))
+                (setf (row-counts-cursor kept) (and (< cursor count) cursor))))))))
+  ;; a search for the widest row of an unwrapped document: one slice of it this frame, as
+  ;; many lines as *ROW-COUNT-SLICE-SECONDS* holds and at least one, past the layout's cache
+  (let ((layout (slot-value view 'layout)))
+    (when (and layout (slot-value view 'widest-kept))
+      (%sync layout)
+      (let ((wide (slot-value view 'widest-kept)))
+        (when (and wide (widest-kept-cursor wide)
+                   (eq (widest-kept-layout wide) layout)
+                   (eq (widest-kept-context wide) (slot-value view 'context)))
+          (let ((count (buffer-line-count (layout-buffer layout)))
+                (cursor (widest-kept-cursor wide))
+                (deadline (+ (get-internal-real-time)
+                             (round (* *row-count-slice-seconds* internal-time-units-per-second)))))
+            (loop while (< cursor count)
+                  do (let* ((line-layout (or (gethash cursor (%cache layout)) (%measure-line layout cursor)))
+                            (w (let ((widest 0.0))
+                                 (dotimes (row (line-layout-row-count line-layout) widest)
+                                   (setf widest (max widest (line-layout-row-width line-layout row)))))))
+                       (when (or (null (widest-kept-searched-line wide)) (> w (widest-kept-searched-widest wide)))
+                         (setf (widest-kept-searched-widest wide) w
+                               (widest-kept-searched-line wide) cursor)))
+                     (incf cursor)
+                  until (>= (get-internal-real-time) deadline))
+            (cond ((< cursor count)
+                   (setf (widest-kept-cursor wide) cursor))
+                  ;; the whole document gone over: what the search found is the widest
+                  (t
+                   (setf (widest-kept-cursor wide) nil
+                         (widest-kept-widest wide) (widest-kept-searched-widest wide)
+                         (widest-kept-line wide) (widest-kept-searched-line wide))))))))))

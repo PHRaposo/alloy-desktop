@@ -241,7 +241,7 @@
   #+sbcl
   (apply #'sb-ext:save-lisp-and-die file
          :toplevel entry-point
-         :save-runtime-options T
+         :save-runtime-options :accept-runtime-options
          #+sb-core-compression :compression #+sb-core-compression *compression-factor*
          (ecase type
            ((:executable :console)

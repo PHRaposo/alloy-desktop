@@ -40,7 +40,7 @@
   ((scroll-reported :initform (cons 0 0)
                     :documentation "(X . Y) of the scroll last told to SCROLL-CHANGED.")
    (bars-read :initform nil
-              :documentation "(HEIGHT . TOP) of the content the bars were last drawn for."))
+              :documentation "(WIDTH HEIGHT LEFT TOP) of the content the bars were last drawn for."))
   (:documentation "A text pane over a whole document, with the window's scroll bars its host asks for (:SCROLLBARS)."))
 
 (defclass editor-scrollbar (editor:scrollbar) ())
@@ -244,6 +244,15 @@
       (when window
         (tick-caret-blink window #'strong-focus-pane)))))
 
+;;; ------------------------------------------------------------------ the face
+
+;;; A pane given no face draws with its window's, the one the window's dialog items
+;;; draw with (widgets/dialog-item.lisp: widget-font-entry), as a pane of CAPI does.
+(defmethod presentations:realize-renderable :before ((renderer window) (pane text-pane))
+  ;; before the view lays anything out: realizing builds its measurement afresh
+  (unless (slot-value pane 'editor::font)
+    (setf (slot-value pane 'editor::font) (font-entry-font (widget-font-entry pane renderer)))))
+
 (defmethod alloy:handle :after ((event alloy:text-event) (pane text-pane))
   (when (eql :strong (alloy:focus pane)) (reset-caret-blink)))
 
@@ -304,8 +313,9 @@
 ;;; A text-edit-view scrolls as every pane of the window does (view/scroll.lisp:
 ;;; SCROLL-MIXIN), over one place: the view's own.  The window's scrolling reads and
 ;;; writes it in device pixels through SCROLL-OFFSET, whose slot is never used here.
-;;; Only the vertical travel is coupled: the content is reported as wide as the narrowest
-;;; viewport, so no horizontal bar appears and the view keeps its horizontal travel.
+;;; The horizontal travel is coupled when the host allows a horizontal bar and the lines
+;;; are not wrapped; otherwise the content is reported as wide as the narrowest viewport,
+;;; so no horizontal bar appears and the view keeps its horizontal travel.
 
 (defvar *scroll-writing* nil
   "The text-edit-view whose place SET-SCROLL is writing: SET-SCROLL tells of that move itself.")
@@ -328,25 +338,36 @@
   (render-presentation-shapes renderer pane))
 
 (defmethod scroll-offset ((pane text-edit-view))
-  ;; a view of another family answers no place, as it shows no bar
-  (if (eq (editor:text-view-gesture-policy pane) :classic)
-      (alloy:px-point (editor:text-view-scroll-x pane) (editor:text-view-scroll-top pane))
-      (alloy:px-point 0 0)))
+  (alloy:px-point (editor:text-view-scroll-x pane) (editor:text-view-scroll-top pane)))
+
+(defun %pane-travels-across-p (pane)
+  "True when PANE's horizontal travel is the window's: its host allows a horizontal bar and its lines are not wrapped."
+  (and (scroll-axis-h-p (scrollbars pane))
+       (not (slot-value pane 'editor::wrap-p))
+       (editor:text-view-layout pane)
+       t))
 
 (defmethod (setf scroll-offset) (offset (pane text-edit-view))
   (let ((*scroll-writing* pane))
+    ;; the place SET-SCROLL hands over is rounded: a view standing between two pixels
+    ;; across is left there by a move down
+    (when (and (%pane-travels-across-p pane)
+               (/= (alloy:pxx offset) (round (scroll-x pane))))
+      (setf (editor:text-view-scroll-left pane) (alloy:pxx offset)))
     (unless (= (alloy:pxy offset) (scroll-y pane))
       (setf (editor:text-view-scroll-top pane) (alloy:pxy offset))))
   (setf (slot-value pane 'scroll-reported) (cons (scroll-x pane) (scroll-y pane)))
   offset)
 
 (defmethod scroll-content-size ((pane text-edit-view))
-  ;; as wide as the viewport left beside a vertical bar; as tall as the view's content,
-  ;; which a view of another family, or one not laid out yet, does not answer
+  ;; as wide as the widest line when the travel across is the window's, else as the
+  ;; viewport left beside a vertical bar; as tall as the view's content, the view's
+  ;; own height before it is laid out
   (multiple-value-bind (width height) (scroll-view-size pane)
-    (values (- width *scrollbar-track-px*)
-            (if (and (eq (editor:text-view-gesture-policy pane) :classic)
-                     (editor:text-view-layout pane))
+    (values (if (%pane-travels-across-p pane)
+                (editor:text-view-content-width pane)
+                (- width *scrollbar-track-px*))
+            (if (editor:text-view-layout pane)
                 (editor:text-view-content-height pane)
                 height))))
 
@@ -390,17 +411,19 @@
 
 ;;; The content of a wrapped view is measured a slice a frame after its width changed
 ;;; (alloy-editor/view.lisp: animation:update :after for text-view), which moves no text:
-;;; the bars are drawn again when the height or the place they read has changed.
+;;; so is the widest line of an unwrapped one after its widest line went: the bars are
+;;; drawn again when the size or the place they read has changed.
 (defmethod org.shirakumo.alloy.animation:update :after ((pane text-edit-view) dt)
   (declare (ignore dt))
-  (when (and (scrollbars pane) (editor:text-view-layout pane)
-             (eq (editor:text-view-gesture-policy pane) :classic))
-    (let ((height (editor:text-view-content-height pane))
-          (top (editor:text-view-scroll-top pane))
-          (read (slot-value pane 'bars-read)))
-      (unless (and read (= height (car read)) (= top (cdr read)))
-        (setf (slot-value pane 'bars-read) (cons height top))
-        (mark-scrollbars pane)))))
+  (when (and (scrollbars pane) (editor:text-view-layout pane))
+    (multiple-value-bind (width height) (scroll-content-size pane)
+      (let ((left (scroll-x pane))
+            (top (scroll-y pane))
+            (read (slot-value pane 'bars-read)))
+        (unless (and read (= width (first read)) (= height (second read))
+                     (= left (third read)) (= top (fourth read)))
+          (setf (slot-value pane 'bars-read) (list width height left top))
+          (mark-scrollbars pane))))))
 
 ;;; the bands the bars cover, decided in this same pass by the window's scrolling
 ;;; (view/render.lisp: prepare-for-render :before for scroll-mixin): the text gives

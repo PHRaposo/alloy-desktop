@@ -41,6 +41,8 @@
            "*EDITOR-KEYMAP*"
            "*FIELD-KEYMAP*"
            "TEXT-VIEW-CONTENT-HEIGHT"
+           "TEXT-VIEW-CONTENT-WIDTH"
+           "TEXT-VIEW-SCROLL-LEFT"
            "TEXT-VIEW-SCROLL-TOP"
            "TEXT-VIEW-SCROLLED"
            "TEXT-VIEW-RESERVE-RIGHT"
