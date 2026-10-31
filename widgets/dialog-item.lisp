@@ -12,7 +12,7 @@
 
 (defgeneric widget-font-entry (widget renderer)
   (:documentation "The font-entry WIDGET's text is drawn with under RENDERER.")
-  (:method ((widget t) renderer) (role-font-entry renderer :dialog-default)))
+  (:method ((widget t) renderer) (role-font-entry renderer *default-font-role*)))
 
 (defgeneric widget-enabled-p (widget)
   (:documentation "True while WIDGET is enabled; a disabled widget draws its text in *disabled-text*.")
@@ -40,7 +40,7 @@
    (border-width :initarg :border-width :initform 1   :accessor widget-border-width)
    ;; not ENABLED: that slot of a menu holds the menu's own state (menu/menu.lisp: defclass pop-up-menu)
    (enabled-p    :initarg :enabled      :initform t   :accessor widget-enabled-p)
-   (font         :initarg :font         :initform :dialog-default :accessor widget-font))
+   (font         :initarg :font         :initform *default-font-role* :accessor widget-font))
   (:documentation "A dialog pane: drawn above its container's own drawing, answering keys only with the strong
 focus, and carrying its own style: colours as chroma colours or palette keys, NIL for the look's own; the font as
 a native role keyword or a list (FAMILY POINTS &key SLANT WEIGHT)."))

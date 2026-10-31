@@ -67,8 +67,8 @@ tree while the tab is current."
   ((:label simple:text)
    (alloy:margins 2 2)
    (alloy:name (alloy:active-value alloy:renderable))
-   :font (font-entry-font (role-font-entry alloy:renderer :dialog-default))
-   :size (font-entry-size-unit (role-font-entry alloy:renderer :dialog-default))
+   :font (font-entry-font (role-font-entry alloy:renderer *default-font-role*))
+   :size (font-entry-size-unit (role-font-entry alloy:renderer *default-font-role*))
    :halign :middle :valign :middle
    :z-index 10))
 
@@ -99,7 +99,7 @@ tree while the tab is current."
                   (w (if label
                          (alloy:pxw (alloy:suggest-size sz label))
                          (let* ((tree  (alloy:layout-tree rb))
-                                (entry (and tree (role-font-entry (alloy:ui tree) :dialog-default))))
+                                (entry (and tree (role-font-entry (alloy:ui tree) *default-font-role*))))
                            ;; a renderer with no atlas at all resolves no font to measure with
                            (if (and entry (font-entry-font entry))
                                (alloy:with-unit-parent rb
@@ -108,4 +108,4 @@ tree while the tab is current."
                                                  (princ-to-string (alloy:name (alloy:active-value rb)))))
                                0)))))
              (alloy:px-size (+ w 4)
-                            (+ (role-points-px :dialog-default) 18)))))))
+                            (+ (role-points-px *default-font-role*) 18)))))))

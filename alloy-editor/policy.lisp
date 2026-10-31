@@ -75,7 +75,7 @@ The rest is *CLASSIC-KEYMAP* as it stood when this file was loaded.")
   "Characters a :CLASSIC double click stops at: the run it takes is everything else.")
 
 (defparameter *classic-wheel-step* 40
-  "Device pixels one wheel notch takes a :CLASSIC view's text.")
+  "Device pixels one wheel notch takes a :CLASSIC view's text, and the lines of a view of any family across.")
 
 (defparameter *classic-drag-step* 12
   "Device pixels a :CLASSIC view's text travels for each pointer move a selection drag makes outside it.")

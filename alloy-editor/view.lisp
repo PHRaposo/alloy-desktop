@@ -1596,6 +1596,11 @@
   (:method ((view text-view))
     nil))
 
+(defgeneric text-view-travels-across-p (view)
+  (:documentation "True when VIEW's host moves its unwrapped lines across, so the horizontal axis of the wheel is theirs.  False by default: that axis then travels down the rows.")
+  (:method ((view text-view))
+    nil))
+
 (defun %view-row-counts (view)
   "The visual rows of every logical line of VIEW's wrapped document (ROW-COUNTS), kept across the edits: the lines an edit changed are measured the next time they are asked for.  A document laid out anew takes every line for one row, and a new measuring context keeps the counts it had, as estimates; either way the lines on screen are measured now and the rest a slice a frame (ANIMATION:UPDATE :AFTER for TEXT-VIEW), never the whole document at once."
   (let ((layout (slot-value view 'layout)))
@@ -2163,6 +2168,14 @@
        renderer)))
   (call-next-method))
 
+(defun %view-wheel-across (view event)
+  "Take VIEW's lines across by the horizontal axis of EVENT when that axis is theirs; true when it was."
+  (let ((dx (org.shirakumo.alloy:dx event)))
+    (when (and (not (zerop dx)) (text-view-travels-across-p view))
+      (setf (text-view-scroll-left view)
+            (- (text-view-scroll-x view) (* *classic-wheel-step* dx)))
+      t)))
+
 (defmethod org.shirakumo.alloy:handle ((event org.shirakumo.alloy:scroll) (view text-view))
   ;; the wheel belongs to the pane it stands over, not to the one holding the keyboard;
   ;; a wheel the view does not take is declined, whatever else its class is
@@ -2172,16 +2185,19 @@
               (not (text-view-single-line-p view)))
          ;; a notch held with Control or Command is a gesture of its own: taken, no travel
          (unless (intersection '(:control :super) *modifiers*)
-           (let ((dy (org.shirakumo.alloy:dy event)))
-             (%classic-scroll view (* *classic-wheel-step*
-                                      (if (zerop dy) (org.shirakumo.alloy:dx event) (- dy))))
-             (%view-relayout view)))
+           (let ((dy (org.shirakumo.alloy:dy event))
+                 (across (%view-wheel-across view event)))
+             (unless (and across (zerop dy))
+               (%classic-scroll view (* *classic-wheel-step*
+                                        (if (zerop dy) (org.shirakumo.alloy:dx event) (- dy))))
+               (%view-relayout view))))
          t)
         (t
-         (let ((rows (round (* *wheel-rows* (- (org.shirakumo.alloy:dy event))))))
-           (if (zerop rows)
-               (org.shirakumo.alloy:decline)
-               (text-view-scroll-by-rows view rows))))))
+         (let ((rows (round (* *wheel-rows* (- (org.shirakumo.alloy:dy event)))))
+               (across (%view-wheel-across view event)))
+           (cond ((not (zerop rows)) (text-view-scroll-by-rows view rows))
+                 (across t)
+                 (t (org.shirakumo.alloy:decline)))))))
 
 (defun %view-local-point (view location)
   "(values X Y) of LOCATION, which arrives in the window's own coordinates, in VIEW's box."

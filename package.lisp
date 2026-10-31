@@ -531,11 +531,15 @@
 
    ;; Text rendering.
 
+   ;; The host application.
+   #:*application-name*
+
    ;; Font atlas registry, per-renderer font cache, native font roles.
    #:*font-atlases*
    #:*bundled-font-directory*
    #:*fallback-families*
    #:*native-role-fallback*
+   #:*default-font-role*
    #:find-font-source
    #:make-font-entry
    #:font-entry-font

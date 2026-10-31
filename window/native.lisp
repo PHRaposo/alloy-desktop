@@ -52,6 +52,10 @@ them before delegating to the Alloy windowing backend."
          :parent parent
          (append (when share (list :share share))
                  native-hints
+                 ;; without them GLFW takes the X class from the window title (x11_window.c: createNativeWindow)
+                 #+linux (when *application-name*
+                           (list :x11-class-name *application-name*
+                                 :x11-instance-name *application-name*))
                  class-initargs)))
 
 

@@ -105,3 +105,9 @@ WINDOW's command-key presses run, or NIL.")
   (declare (ignore window paths position)) nil)
 (defmethod item-action ((item t) value)
   (declare (ignore item value)) nil)
+
+(defvar *default-font-role* :control
+  "The native font role of a widget that names no font of its own.")
+
+(defvar *application-name* nil
+  "The host application's name, set before its first window; NIL leaves the library on its defaults.")

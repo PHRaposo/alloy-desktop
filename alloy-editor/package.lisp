@@ -45,6 +45,7 @@
            "TEXT-VIEW-SCROLL-LEFT"
            "TEXT-VIEW-SCROLL-TOP"
            "TEXT-VIEW-SCROLLED"
+           "TEXT-VIEW-TRAVELS-ACROSS-P"
            "TEXT-VIEW-RESERVE-RIGHT"
            "TEXT-VIEW-RESERVE-BOTTOM"
            "TEXT-VIEW-CARET-SHOWN-P"

@@ -340,8 +340,9 @@
 (defmethod scroll-offset ((pane text-edit-view))
   (alloy:px-point (editor:text-view-scroll-x pane) (editor:text-view-scroll-top pane)))
 
-(defun %pane-travels-across-p (pane)
-  "True when PANE's horizontal travel is the window's: its host allows a horizontal bar and its lines are not wrapped."
+;;; PANE's horizontal travel is the window's: its host allows a horizontal bar and its
+;;; lines are not wrapped
+(defmethod editor:text-view-travels-across-p ((pane text-edit-view))
   (and (scroll-axis-h-p (scrollbars pane))
        (not (slot-value pane 'editor::wrap-p))
        (editor:text-view-layout pane)
@@ -351,7 +352,7 @@
   (let ((*scroll-writing* pane))
     ;; the place SET-SCROLL hands over is rounded: a view standing between two pixels
     ;; across is left there by a move down
-    (when (and (%pane-travels-across-p pane)
+    (when (and (editor:text-view-travels-across-p pane)
                (/= (alloy:pxx offset) (round (scroll-x pane))))
       (setf (editor:text-view-scroll-left pane) (alloy:pxx offset)))
     (unless (= (alloy:pxy offset) (scroll-y pane))
@@ -364,7 +365,7 @@
   ;; viewport left beside a vertical bar; as tall as the view's content, the view's
   ;; own height before it is laid out
   (multiple-value-bind (width height) (scroll-view-size pane)
-    (values (if (%pane-travels-across-p pane)
+    (values (if (editor:text-view-travels-across-p pane)
                 (editor:text-view-content-width pane)
                 (- width *scrollbar-track-px*))
             (if (editor:text-view-layout pane)

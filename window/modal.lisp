@@ -30,17 +30,21 @@ Nested calls restore the previous modal and dismiss-on-input state on unwind."
         *modal-dismiss-on-input* nil)
   nil)
 
+(defun %set-window-enabled (window enabled)
+  "Enable or disable the input of WINDOW."
+  #+win32
+  (let ((hwnd (%window-hwnd window)))
+    (when (and hwnd (not (cffi:null-pointer-p hwnd)))
+      (%enable-window hwnd (if enabled 1 0))))
+  #-win32
+  (when (%glfw:pointer window)
+    (setf (%glfw:attribute :mouse-passthrough window) (not enabled))))
+
 (defun %set-other-windows-enabled (modal-window enabled)
   "Enable or disable every registered live desktop window except MODAL-WINDOW."
   (loop for window in (registered-windows)
         unless (eq window modal-window)
-        do #+win32
-           (let ((hwnd (%window-hwnd window)))
-             (when (and hwnd (not (cffi:null-pointer-p hwnd)))
-               (%enable-window hwnd (if enabled 1 0))))
-           #-win32
-           (when (%glfw:pointer window)
-             (setf (%glfw:attribute :mouse-passthrough window) (not enabled))))
+        do (%set-window-enabled window enabled))
   nil)
 
 (defun exit-modal (value)
@@ -73,10 +77,10 @@ Nested calls restore the previous modal and dismiss-on-input state on unwind."
                            dismiss-on-input-p
                            prepare-dialog
                            before-iteration
-                           reap-before-poll
-                           after-poll
-                           windows-function
-                           frame-function
+                           (reap-before-poll #'reap-dead-windows)
+                           (after-poll #'popup-resolve-focus-loss)
+                           (windows-function #'registered-windows)
+                           (frame-function (lambda (dt) (frame-once windows-function dt)))
                            iteration-guard
                            (abort-restart-report "Cancel the current desktop operation."))
   "Run DIALOG as a synchronous desktop modal operation.
@@ -95,71 +99,80 @@ omitted, the neutral FOCUS-PANE operation focuses it in DIALOG.
 REAP-BEFORE-POLL runs before POLL-DESKTOP-EVENTS; AFTER-POLL runs immediately
 after it. WINDOWS-FUNCTION supplies the live native windows whose should-close
 flag must be reaped. FRAME-FUNCTION receives DT for the final step of a tick.
+These four default to what the desktop event loop does at the same points, so a
+bare call serves every registered window. When the operation ends the focus returns
+to OWNER, or else to the window that held it, if that window is still on screen.
 ITERATION-GUARD, such as CALL-GUARDED-ITERATION, receives each tick as a thunk;
 without it an error in a tick propagates out of the modal operation."
   (call-on-ui-thread
    (lambda ()
-     (let ((outcome
-             (catch '%modal-exit
-               (unwind-protect
-                   (progn
-                     (when owner
-                       (setf (window-owner dialog) owner))
-                     (when prepare-dialog
-                       (funcall prepare-dialog))
-                     (call-with-modal-state
-                      dialog dismiss-on-input-p
-                      (lambda ()
-                        (show-window dialog)
-                        (%glfw:focus dialog)
-                        (when focus
-                          (if focus-function
-                              (funcall focus-function focus)
-                              (focus-pane dialog focus)))
-                        (%set-other-windows-enabled dialog nil)
-                        (let ((start (get-internal-real-time))
-                              (deadline (and timeout
-                                             (+ (get-internal-real-time)
-                                                (round (* timeout
-                                                          internal-time-units-per-second))))))
-                          (loop until (or (%glfw:should-close-p dialog)
-                                          (and deadline
-                                               (>= (get-internal-real-time) deadline))
-                                          (not (eq dialog (current-modal-window))))
-                                do (%call-modal-iteration
-                                    (lambda ()
-                                      (when before-iteration
-                                        (funcall before-iteration))
-                                      (when reap-before-poll
-                                        (funcall reap-before-poll))
-                                      (poll-desktop-events :timeout (float 1/60 0d0))
-                                      (when after-poll
-                                        (funcall after-poll))
-                                      (when windows-function
-                                        (let ((dead
-                                                (loop for window in (funcall windows-function)
-                                                      when (and (not (eq window dialog))
-                                                                (%glfw:pointer window)
-                                                                (%glfw:should-close-p window))
-                                                        collect window)))
-                                          (dolist (window dead)
-                                            (alloy:deallocate window))))
-                                      (when frame-function
-                                        (let ((dt (float
-                                                   (/ (- (get-internal-real-time) start)
-                                                      internal-time-units-per-second)
-                                                   0f0)))
-                                          (setf start (get-internal-real-time))
-                                          (funcall frame-function dt))))
-                                    iteration-guard
-                                    abort-restart-report)))))
-                     (%make-modal-result nil nil))
-                 (%set-other-windows-enabled dialog t)
-                 ;; The existing engine disposes the modal synchronously before
-                 ;; returning. Preserve that order rather than leaving a native
-                 ;; should-close window for a later outer-loop iteration.
-                 (when (%glfw:pointer dialog)
-                   (alloy:deallocate dialog))))))
+     (let* ((return-focus (or owner (focused-window)))
+            (outcome
+              (catch '%modal-exit
+                (unwind-protect
+                    (progn
+                      (when owner
+                        (setf (window-owner dialog) owner))
+                      (when prepare-dialog
+                        (funcall prepare-dialog))
+                      (call-with-modal-state
+                       dialog dismiss-on-input-p
+                       (lambda ()
+                         (show-window dialog)
+                         (%glfw:focus dialog)
+                         (when focus
+                           (if focus-function
+                               (funcall focus-function focus)
+                               (focus-pane dialog focus)))
+                         (%set-other-windows-enabled dialog nil)
+                         (let ((start (get-internal-real-time))
+                               (deadline (and timeout
+                                              (+ (get-internal-real-time)
+                                                 (round (* timeout
+                                                           internal-time-units-per-second))))))
+                           (loop until (or (%glfw:should-close-p dialog)
+                                           (and deadline
+                                                (>= (get-internal-real-time) deadline))
+                                           (not (eq dialog (current-modal-window))))
+                                 do (%call-modal-iteration
+                                     (lambda ()
+                                       (when before-iteration
+                                         (funcall before-iteration))
+                                       (when reap-before-poll
+                                         (funcall reap-before-poll))
+                                       (poll-desktop-events :timeout (float 1/60 0d0))
+                                       (when after-poll
+                                         (funcall after-poll))
+                                       (when windows-function
+                                         (let ((dead
+                                                 (loop for window in (funcall windows-function)
+                                                       when (and (not (eq window dialog))
+                                                                 (%glfw:pointer window)
+                                                                 (%glfw:should-close-p window))
+                                                         collect window)))
+                                           (dolist (window dead)
+                                             (alloy:deallocate window))))
+                                       (when frame-function
+                                         (let ((dt (float
+                                                    (/ (- (get-internal-real-time) start)
+                                                       internal-time-units-per-second)
+                                                    0f0)))
+                                           (setf start (get-internal-real-time))
+                                           (funcall frame-function dt))))
+                                     iteration-guard
+                                     abort-restart-report)))))
+                      (%make-modal-result nil nil))
+                  (let ((outer (current-modal-window)))
+                    (if outer
+                        (%set-window-enabled outer t)
+                        (%set-other-windows-enabled dialog t)))
+                  ;; The existing engine disposes the modal synchronously before
+                  ;; returning. Preserve that order rather than leaving a native
+                  ;; should-close window for a later outer-loop iteration.
+                  (when (%glfw:pointer dialog)
+                    (alloy:deallocate dialog))
+                  (when (and return-focus (window-visible-p return-focus))
+                    (%glfw:focus return-focus))))))
        (if (%modal-result-p outcome)
            (values (%modal-result-value outcome)
                    (%modal-result-accepted-p outcome))
