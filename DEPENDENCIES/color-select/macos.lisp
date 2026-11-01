@@ -61,7 +61,7 @@
 ;; The panel is a non-modal NSPanel; drive it with a modal session
 ;; (beginModalSessionForWindow:) and set the process to :accessory (1) so a
 ;; non-bundled SBCL shows and focuses the panel.
-(defmethod choose-color-with ((backend macos) &key default (full-open t) &allow-other-keys)
+(defmethod choose-color-with ((backend macos) &key default (full-open t) owner &allow-other-keys)
   #+darwin
   (trivial-main-thread:with-body-in-main-thread (:blocking t)
     (float-features:with-float-traps-masked t
@@ -80,13 +80,33 @@
                                :pointer (register-name "performClose:")
                                :pointer)))
           (objc-call panel "setAccessoryView:" :pointer done :void))
-        (objc-call panel "makeKeyAndOrderFront:" :pointer (cffi:null-pointer) :void)
-        (let ((session (objc-call app "beginModalSessionForWindow:" :pointer panel :pointer)))
+        (let* ((owner (and owner (not (cffi:null-pointer-p owner)) owner))
+               (parent (when owner (objc-call panel "parentWindow"))))
+          (when owner
+            (objc-call owner "retain")
+            (objc-call parent "retain"))
           (unwind-protect
-               (loop while (/= 0 (objc-call panel "isVisible" :int))
-                     do (objc-call app "runModalSession:" :pointer session :long))
-            (objc-call app "endModalSession:" :pointer session :void)))
-        (let ((c (objc-call panel "color" :pointer)))
-          (if (cffi:null-pointer-p c)
-              (values NIL NIL)
-              (values (nscolor->rgb c) T)))))))
+               (progn
+                 (when owner
+                   (objc-call parent "removeChildWindow:" :pointer panel :void)
+                   (objc-call owner "addChildWindow:ordered:" :pointer panel :long 1 :void))
+                 (objc-call panel "makeKeyAndOrderFront:" :pointer (cffi:null-pointer) :void)
+                 (let ((session (objc-call app "beginModalSessionForWindow:" :pointer panel :pointer)))
+                   (unwind-protect
+                        (loop while (/= 0 (objc-call panel "isVisible" :char))
+                              do (objc-call app "runModalSession:" :pointer session :long))
+                     (objc-call app "endModalSession:" :pointer session :void)))
+                 (let ((c (objc-call panel "color" :pointer)))
+                   (if (cffi:null-pointer-p c)
+                       (values NIL NIL)
+                       (values (nscolor->rgb c) T))))
+            (when owner
+              (unwind-protect
+                   (progn
+                     (objc-call panel "orderOut:" :pointer (cffi:null-pointer) :void)
+                     (objc-call owner "removeChildWindow:" :pointer panel :void)
+                     (objc-call parent "addChildWindow:ordered:" :pointer panel :long 1 :void)
+                     (unless (zerop (objc-call owner "isVisible" :char))
+                       (objc-call owner "makeKeyAndOrderFront:" :pointer (cffi:null-pointer) :void)))
+                (objc-call parent "release" :void)
+                (objc-call owner "release" :void)))))))))

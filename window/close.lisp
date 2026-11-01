@@ -71,7 +71,7 @@
 (defmethod alloy:handle :around ((event windowing:close) (window window))
   (when (window-alive-p window)
     (setf (%glfw:should-close-p window) nil))
-  (when (window-close-allowed-p window)
+  (when (and (not *native-dialog-state*) (window-close-allowed-p window))
     (when (window-alive-p window)
       (setf (%glfw:should-close-p window) t))
     (call-next-method)))

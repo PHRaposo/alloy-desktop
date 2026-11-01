@@ -11,7 +11,7 @@
       *default-backend*
       (setf *default-backend* (determine-default-backend))))
 
-(defun select (&rest args &key default backend variant)
+(defun select (&rest args &key default backend variant owner)
   "Open a native font selection dialog.
 
 DEFAULT and the returned FONT-PLIST share one shape:
@@ -21,8 +21,9 @@ On macOS the system font is returned as `(:family :system ...)` (the literal
 VARIANT is one of :FULL (default), :COMPACT, :MINIMAL — selects how many widgets
 the native dialog exposes. Honoured by the win32 backend; ignored by yad (and
 by macos for now, until the validModesForFontPanel: bridge is implemented).
+OWNER is NIL or a native Win32 HWND/macOS NSWindow pointer.
 Returns (values FONT-PLIST T) on OK, (values NIL NIL) on cancel."
-  (declare (ignore default variant))
+  (declare (ignore default variant owner))
   (restart-case (apply #'select-with (or backend (default-backend)) args)
     (continue ()
       :report "Cancel the call by returning NIL"
@@ -36,7 +37,7 @@ Returns (values FONT-PLIST T) on OK, (values NIL NIL) on cancel."
             (make-instance class))))
 
 (defgeneric finalize (backend))
-(defgeneric select-with (backend &key default &allow-other-keys))
+(defgeneric select-with (backend &key default owner &allow-other-keys))
 
 (defmethod finalize ((backend symbol))
   (finalize (find-class backend)))

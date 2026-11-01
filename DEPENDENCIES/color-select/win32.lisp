@@ -40,7 +40,7 @@
         (float (/ (logand (ash cref -8) #xFF) 255.0))
         (float (/ (logand (ash cref -16) #xFF) 255.0))))
 
-(defmethod choose-color-with ((backend win32) &key default (full-open t) prevent-full-open
+(defmethod choose-color-with ((backend win32) &key default (full-open t) prevent-full-open owner
                               &allow-other-keys)
   (cffi:with-foreign-objects ((cc '(:struct choosecolorw))
                               (cust :uint32 16))
@@ -51,7 +51,7 @@
                                lp-template-name)
                               cc (:struct choosecolorw))
       (setf struct-size      (cffi:foreign-type-size '(:struct choosecolorw))
-            hwnd-owner       (cffi:null-pointer)
+            hwnd-owner       (or owner (cffi:null-pointer))
             h-instance       (cffi:null-pointer)
             rgb-result       (if default (rgb->colorref default) 0)
             lp-cust-colors   cust

@@ -16,6 +16,7 @@
   (format t "[34]   click in a wide line, press End: the text follows the caret and the handle follows the text;~%")
   (format t "[34]   select a whole wide line and delete it: once every wide line is gone the handle grows and then goes~%")
   (format t "[34]   with the bar, within a second, with no pause in typing;~%")
+  (format t "[34]   swipe two fingers left and right over the text: it moves across and the handle follows;~%")
   (format t "[34]   the vertical bar and the wheel work as in example 30.~%")
   (format t "[34] Must NOT happen: text under either bar; a wrapped line; a pause when typing or deleting.~%")
   (format t "[34] Close the window from its title bar to end.~%")

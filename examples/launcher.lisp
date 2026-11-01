@@ -21,7 +21,7 @@
   "The folder holding this file and one folder per category.")
 
 (defparameter *categories*
-  '(("Windows" "windows") ("Layout" "layout") ("Widgets" "widgets"))
+  '(("Windows" "windows") ("Layout" "layout") ("Widgets" "widgets") ("Dialogs" "dialogs"))
   "Button text and folder of each category.")
 
 (defparameter *margin* 16)
@@ -96,7 +96,8 @@
   (let ((categories (loop for (title folder) in *categories*
                           collect (list title (load-category folder)))))
     (alloy-desktop:with-desktop-application (screen)
-      (let* ((width (+ (* 2 *margin*) (* 3 *category-button-width*) (* 2 *gap*)))
+      (let* ((count (length categories))
+             (width (+ (* 2 *margin*) (* count *category-button-width*) (* (1- count) *gap*)))
              (main (make-launcher-window screen "ALLOY-DESKTOP: EXAMPLES" width
                                          (+ (* 2 *margin*) *title-height* *gap* *button-height*)))
              (root (alloy-desktop:window-root-layout main))

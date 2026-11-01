@@ -89,7 +89,7 @@
 (defclass win32 (backend)
   ())
 
-(defmethod select-with ((backend win32) &key default (variant :full) &allow-other-keys)
+(defmethod select-with ((backend win32) &key default (variant :full) owner &allow-other-keys)
   "VARIANT is :FULL (default), :COMPACT, or :MINIMAL.
 :FULL    keeps the standard ChooseFontW panel (family, style, size, effects, script, preview).
 :COMPACT adds CF_NOSCRIPTSEL, hiding only the Script dropdown.
@@ -126,7 +126,7 @@
                                size-min size-max)
                               cf (:struct choosefontw))
       (setf struct-size      (cffi:foreign-type-size '(:struct choosefontw))
-            hwnd-owner       (cffi:null-pointer)
+            hwnd-owner       (or owner (cffi:null-pointer))
             hdc              (cffi:null-pointer)
             lp-log-font      lf
             point-size       (if default (* 10 (or (getf default :size) 12)) 120)

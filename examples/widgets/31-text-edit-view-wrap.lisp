@@ -25,7 +25,7 @@
     (let ((root (alloy-desktop:window-root-layout window))
           (pane (make-instance 'alloy-desktop:text-edit-view
                                :font (alloy-desktop:font-entry-font
-                                      (alloy-desktop:role-font-entry window :dialog-default))
+                                      (alloy-desktop:role-font-entry window alloy-desktop:*default-font-role*))
                                :wrap-p t
                                :scrollbars :v
                                :frame-color alloy-desktop:*tab-border*

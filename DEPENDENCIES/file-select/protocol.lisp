@@ -46,13 +46,15 @@ handles multiple selections when the backend returns a list."
           (as-directory-pathname selection))
       selection))
 
-(defun existing (&rest args &key title default filter multiple backend)
+(defun existing (&rest args &key title default filter multiple backend owner)
+  "OWNER is NIL or a native Win32 HWND/macOS NSWindow pointer."
   (restart-case (apply #'existing-with (or backend (default-backend)) args)
     (continue ()
       :report "Cancel the call by returning NIL"
       (values NIL NIL))))
 
-(defun new (&rest args &key title default filter multiple backend)
+(defun new (&rest args &key title default filter multiple backend owner)
+  "OWNER is NIL or a native Win32 HWND/macOS NSWindow pointer."
   (restart-case (apply #'new-with (or backend (default-backend)) args)
     (continue ()
       :report "Cancel the call by returning NIL"
@@ -66,8 +68,8 @@ handles multiple selections when the backend returns a list."
             (make-instance class))))
 
 (defgeneric finalize (backend))
-(defgeneric new-with (backend &key title default filter &allow-other-keys))
-(defgeneric existing-with (backend &key title default filter multiple &allow-other-keys))
+(defgeneric new-with (backend &key title default filter owner &allow-other-keys))
+(defgeneric existing-with (backend &key title default filter multiple owner &allow-other-keys))
 
 (defmethod new-with :around ((backend backend) &rest args &key filter &allow-other-keys)
   (declare (ignore args))

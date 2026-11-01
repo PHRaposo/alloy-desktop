@@ -47,7 +47,7 @@
     (cffi:use-foreign-library cocoa)
     (cffi:use-foreign-library appkit)))
 
-(defmethod select-with ((backend macos) &key default (variant :full) &allow-other-keys)
+(defmethod select-with ((backend macos) &key default (variant :full) owner &allow-other-keys)
   "Open the native font panel; return a (:family :size :weight :slant) plist or NIL.
 VARIANT is accepted for API parity but not yet honoured."
   (declare (ignore variant))
@@ -78,33 +78,53 @@ VARIANT is accepted for API parity but not yet honoured."
                                 :pointer (%sel-register-name "performClose:")
                                 :pointer)))
           (%objc-call panel "setAccessoryView:" :pointer done :void))
-        (%objc-call manager "orderFrontFontPanel:" :pointer (cffi:null-pointer) :void)
-        (let ((session (%objc-call app "beginModalSessionForWindow:" :pointer panel :pointer)))
+        (let* ((owner (and owner (not (cffi:null-pointer-p owner)) owner))
+               (parent (when owner (%objc-call panel "parentWindow"))))
+          (when owner
+            (%objc-call owner "retain")
+            (%objc-call parent "retain"))
           (unwind-protect
-               (loop while (/= 0 (%objc-call panel "isVisible" :int))
-                     do (%objc-call app "runModalSession:" :pointer session :long))
-            (%objc-call app "endModalSession:" :pointer session :void)))
-        (let ((selected (%objc-call manager "selectedFont" :pointer)))
-          (cond ((cffi:null-pointer-p selected)
-                 (values NIL NIL))
-                (t
-                 (let* ((family     (cffi:foreign-funcall "objc_msgSend"
-                                                          %id selected
-                                                          %sel (%sel-register-name "familyName")
-                                                          :pointer))
-                        (family-str (unless (cffi:null-pointer-p family)
-                                      (cffi:foreign-funcall "objc_msgSend"
-                                                             %id family
-                                                             %sel (%sel-register-name "UTF8String")
-                                                             :string)))
-                        (sz-d       (%objc-call selected "pointSize" :double))
-                        (traits     (%objc-call manager "traitsOfFont:" :pointer selected :uint64))
-                        (weight     (if (/= 0 (logand traits 2)) :bold :regular))
-                        (slant      (if (/= 0 (logand traits 1)) :italic :roman)))
-                   (cond ((null family-str)
+               (progn
+                 (when owner
+                   (%objc-call parent "removeChildWindow:" :pointer panel :void)
+                   (%objc-call owner "addChildWindow:ordered:" :pointer panel :long 1 :void))
+                 (%objc-call manager "orderFrontFontPanel:" :pointer (cffi:null-pointer) :void)
+                 (let ((session (%objc-call app "beginModalSessionForWindow:" :pointer panel :pointer)))
+                   (unwind-protect
+                        (loop while (/= 0 (%objc-call panel "isVisible" :char))
+                              do (%objc-call app "runModalSession:" :pointer session :long))
+                     (%objc-call app "endModalSession:" :pointer session :void)))
+                 (let ((selected (%objc-call manager "selectedFont" :pointer)))
+                   (cond ((cffi:null-pointer-p selected)
                           (values NIL NIL))
-                         ;; Dot-prefixed virtual families (.AppleSystemUIFont) are not name-resolvable.
-                         ((char= #\. (char family-str 0))
-                          (values (list :family :system :size (round sz-d) :weight weight :slant slant) T))
                          (t
-                          (values (list :family family-str :size (round sz-d) :weight weight :slant slant) T)))))))))))
+                          (let* ((family     (cffi:foreign-funcall "objc_msgSend"
+                                                                   %id selected
+                                                                   %sel (%sel-register-name "familyName")
+                                                                   :pointer))
+                                 (family-str (unless (cffi:null-pointer-p family)
+                                               (cffi:foreign-funcall "objc_msgSend"
+                                                                      %id family
+                                                                      %sel (%sel-register-name "UTF8String")
+                                                                      :string)))
+                                 (sz-d       (%objc-call selected "pointSize" :double))
+                                 (traits     (%objc-call manager "traitsOfFont:" :pointer selected :uint64))
+                                 (weight     (if (/= 0 (logand traits 2)) :bold :regular))
+                                 (slant      (if (/= 0 (logand traits 1)) :italic :roman)))
+                            (cond ((null family-str)
+                                   (values NIL NIL))
+                                  ;; Dot-prefixed virtual families (.AppleSystemUIFont) are not name-resolvable.
+                                  ((char= #\. (char family-str 0))
+                                   (values (list :family :system :size (round sz-d) :weight weight :slant slant) T))
+                                  (t
+                                   (values (list :family family-str :size (round sz-d) :weight weight :slant slant) T))))))))
+            (when owner
+              (unwind-protect
+                   (progn
+                     (%objc-call panel "orderOut:" :pointer (cffi:null-pointer) :void)
+                     (%objc-call owner "removeChildWindow:" :pointer panel :void)
+                     (%objc-call parent "addChildWindow:ordered:" :pointer panel :long 1 :void)
+                     (unless (zerop (%objc-call owner "isVisible" :char))
+                       (%objc-call owner "makeKeyAndOrderFront:" :pointer (cffi:null-pointer) :void)))
+                (%objc-call parent "release" :void)
+                (%objc-call owner "release" :void)))))))))

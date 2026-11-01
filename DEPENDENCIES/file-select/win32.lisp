@@ -39,13 +39,30 @@
   ())
 
 (defmethod initialize-instance :after ((backend win32) &key)
-  (com:init))
+  (unless (cffi:foreign-library-loaded-p 'org.shirakumo.com-on.cffi:ole32)
+    (cffi:load-foreign-library 'org.shirakumo.com-on.cffi:ole32)))
 
-(defmethod new-with ((backend win32) &key title default filter multiple &allow-other-keys)
-  (open* CLSID-FILE-SAVE-DIALOG IID-IFILE-SAVE-DIALOG title default filter multiple))
+(defun call-with-dialog-com (owner function)
+  (if (and owner (not (cffi:null-pointer-p owner)))
+      (progn
+        (com:check-hresult
+         (org.shirakumo.com-on.cffi:initialize (cffi:null-pointer) :apartment-threaded)
+         :ok :false)
+        (unwind-protect
+             (let ((com::*initialized* T))
+               (funcall function))
+          (org.shirakumo.com-on.cffi:uninitialize)))
+      (progn
+        (com:init)
+        (funcall function))))
 
-(defmethod existing-with ((backend win32) &key title default filter multiple &allow-other-keys)
-  (open* CLSID-FILE-OPEN-DIALOG IID-IFILE-OPEN-DIALOG title default filter multiple))
+(defmethod new-with ((backend win32) &key title default filter multiple owner &allow-other-keys)
+  (call-with-dialog-com
+   owner (lambda () (open* CLSID-FILE-SAVE-DIALOG IID-IFILE-SAVE-DIALOG title default filter multiple owner))))
+
+(defmethod existing-with ((backend win32) &key title default filter multiple owner &allow-other-keys)
+  (call-with-dialog-com
+   owner (lambda () (open* CLSID-FILE-OPEN-DIALOG IID-IFILE-OPEN-DIALOG title default filter multiple owner))))
 
 (defmacro unwind-protect* (cleanup &body body)
   `(unwind-protect (progn ,@body) ,cleanup))
@@ -213,7 +230,7 @@
           (progn ,@body)
        (com:release ,var))))
 
-(defun open* (clsid iid title default filter multiple)
+(defun open* (clsid iid title default filter multiple &optional owner)
   (let ((strings ()) defitem)
     (flet ((wstring (string)
              (car (push (com:string->wstring string) strings))))
@@ -252,7 +269,7 @@
                (check-return (file-dialog-set-folder dialog defitem))
                (check-return (file-dialog-set-file-name dialog (wstring filename))))))
           (unwind-protect* (when defitem (com:release defitem))
-            (case (check-return (file-dialog-show dialog (cffi:null-pointer)) :ok :cancelled)
+            (case (check-return (file-dialog-show dialog (or owner (cffi:null-pointer))) :ok :cancelled)
               (:ok
                (values
                 (cond (multiple

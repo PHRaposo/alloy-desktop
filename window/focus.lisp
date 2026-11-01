@@ -72,6 +72,7 @@ This preserves the existing desktop behavior and only owns the generic native
 refocus mechanism; host focus/caret/menu policy remains outside the facility."
   (let ((modal-window (current-modal-window)))
     (when (and modal-window
+               (not *native-dialog-state*)
                (not (eq focused-window modal-window))
                (not *modal-refocusing-p*))
       (let ((*modal-refocusing-p* t))

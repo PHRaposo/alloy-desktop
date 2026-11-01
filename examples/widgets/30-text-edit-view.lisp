@@ -28,7 +28,7 @@
           ;; the window's own dialog face: a text pane is handed the face it draws in
           (pane (make-instance 'alloy-desktop:text-edit-view
                                :font (alloy-desktop:font-entry-font
-                                      (alloy-desktop:role-font-entry window :dialog-default))
+                                      (alloy-desktop:role-font-entry window alloy-desktop:*default-font-role*))
                                :scrollbars :v
                                :frame-color alloy-desktop:*tab-border*
                                :buffer (alloy-editor:make-buffer

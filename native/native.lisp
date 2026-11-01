@@ -14,6 +14,8 @@
     (window :pointer))
   (cffi:defcfun ("EnableWindow" %enable-window) :int
     (hwnd :pointer) (enable :int))
+  (cffi:defcfun ("IsWindowEnabled" %is-window-enabled) :boolean
+    (hwnd :pointer))
   (cffi:defcfun ("GetWindowLongPtrW" %get-window-long-ptr) :long-long
     (hwnd :pointer) (index :int))
   (cffi:defcfun ("SetWindowLongPtrW" %set-window-long-ptr) :long-long

@@ -47,6 +47,60 @@ Nested calls restore the previous modal and dismiss-on-input state on unwind."
         do (%set-window-enabled window enabled))
   nil)
 
+#+win32
+(defun %protect-native-dialog-window (window)
+  (when (and (window-alive-p window)
+             (not (assoc window (cdr *native-dialog-state*))))
+    (push (cons window (%is-window-enabled (%window-hwnd window)))
+          (cdr *native-dialog-state*))
+    (%set-window-enabled window nil)))
+
+#+win32
+(defun call-with-native-dialog (function)
+  (call-on-ui-thread
+   (lambda ()
+     (let ((*native-dialog-state*
+             (list (or (current-modal-window)
+                       (let ((focused (focused-window)))
+                         (and focused (window-visible-p focused) focused))
+                       (find-if #'window-visible-p (registered-windows :sort-by :visible))))))
+       (unwind-protect
+            (progn
+              (dolist (window (registered-windows))
+                (%protect-native-dialog-window window))
+              (funcall function))
+         (unwind-protect (when (cdr *native-dialog-state*)
+                           (poll-desktop-events))
+           (dolist (entry (cdr *native-dialog-state*))
+             (when (window-alive-p (car entry))
+               (%set-window-enabled (car entry) (cdr entry))))
+         (let ((focus (car *native-dialog-state*)))
+           (when (and focus (window-visible-p focus)
+                      (cdr (assoc focus (cdr *native-dialog-state*))))
+             (%glfw:focus focus)))))))))
+
+#+darwin
+(defun call-with-native-dialog (function)
+  (let ((ui (ui-thread)))
+    (when (and ui (bordeaux-threads:thread-alive-p ui)
+               (not (trivial-main-thread:main-thread-p ui)))
+      (error "Native dialogs require the desktop UI owner on the main thread.")))
+  (call-on-ui-thread
+   (lambda ()
+     (trivial-main-thread:with-body-in-main-thread (:blocking t)
+       (let ((*native-dialog-state*
+               (list (or (current-modal-window)
+                         (let ((focused (focused-window)))
+                           (and focused (window-visible-p focused) focused))
+                         (find-if #'window-visible-p (registered-windows :sort-by :visible))))))
+         (unwind-protect (funcall function)
+           (unwind-protect
+                (when (registered-windows)
+                  (poll-desktop-events))
+             (let ((owner (car *native-dialog-state*)))
+               (when (and owner (window-visible-p owner))
+                 (%glfw:focus owner))))))))))
+
 (defun exit-modal (value)
   "Terminate the innermost modal operation with accepted VALUE."
   (unless (current-modal-window)
@@ -184,7 +238,8 @@ without it an error in a tick propagates out of the modal operation."
 (defmethod alloy:handle :around ((event alloy:input-event)
                                   (window windowing:window))
   (cond ((let ((modal-window (current-modal-window)))
-           (and modal-window (not (eq window modal-window))))
+           (or *native-dialog-state*
+               (and modal-window (not (eq window modal-window)))))
          nil)
         ((and (eq window (modal-dismiss-on-input-window))
               (or (typep event 'alloy:pointer-down)
@@ -195,7 +250,8 @@ without it an error in a tick propagates out of the modal operation."
 (defmethod alloy:handle :around ((event alloy:text-event)
                                   (window windowing:window))
   (cond ((let ((modal-window (current-modal-window)))
-           (and modal-window (not (eq window modal-window))))
+           (or *native-dialog-state*
+               (and modal-window (not (eq window modal-window)))))
          nil)
         ((eq window (modal-dismiss-on-input-window))
          (abort-modal))

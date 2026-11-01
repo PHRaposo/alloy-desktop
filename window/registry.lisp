@@ -1,5 +1,7 @@
 (in-package :alloy-desktop)
 
+(defvar *native-dialog-state* nil)
+
 (defvar *window-states* (make-hash-table :test 'eq)
   "Authoritative registry of live desktop windows and their WINDOW-STATE objects.")
 
@@ -42,6 +44,9 @@ window registered while no share partner is live becomes the partner."
   ;; the registry keys any object; only a native window owns a GL context to share
   (when (and (typep window '%glfw:window) (not (share-window)))
     (setf *share-window* window))
+  #+win32
+  (when *native-dialog-state*
+    (%protect-native-dialog-window window))
   window)
 
 (defun registered-windows (&key (sort-by :create))

@@ -143,7 +143,7 @@
   #+darwin `(trivial-main-thread:with-body-in-main-thread ,args ,@body)
   #-darwin `(progn ,@body))
 
-(defun open* (class constructor &key title default filter multiple message backend)
+(defun open* (class constructor &key title default filter multiple message backend owner)
   (declare (ignore backend))
   (with-body-in-main-thread (:blocking T)
     ;; The panel and every NSString/NSURL/NSArray built here are autoreleased
@@ -183,18 +183,38 @@
                          (objc-call window "setAllowedFileTypes:" :pointer
                                     (objc-call "NSArray" "arrayWithObjects:count:" :pointer list :uint (length filter)))))
                      (objc-call window "center" :void)
-                     (ecase (unwind-protect (objc-call window "runModal" NSModalResponse)
-                              ;; This is necessary to get the window to close.
-                              (loop while (process-event app)))
-                       (:cancel (values NIL NIL))
-                       (:ok
-                        (values
-                         (if (and openp multiple)
-                             (let ((urls (objc-call window "URLs")))
-                               (loop for i from 0 below (objc-call urls "count" :uint)
-                                     for url = (objc-call urls "objectAtIndex:" :uint i)
-                                     collect (ensure-url-path url filter)))
-                             (ensure-url-path (objc-call window "URL") filter))
-                         T)))))
+                     (let* ((owner (and owner (not (cffi:null-pointer-p owner)) owner))
+                            (parent (when owner (objc-call window "parentWindow"))))
+                       (when owner
+                         (objc-call owner "retain")
+                         (objc-call parent "retain"))
+                       (unwind-protect
+                            (progn
+                              (when owner
+                                (objc-call parent "removeChildWindow:" :pointer window :void)
+                                (objc-call owner "addChildWindow:ordered:" :pointer window :long 1 :void))
+                              (ecase (unwind-protect (objc-call window "runModal" NSModalResponse)
+                                       ;; This is necessary to get the window to close.
+                                       (loop while (process-event app)))
+                                (:cancel (values NIL NIL))
+                                (:ok
+                                 (values
+                                  (if (and openp multiple)
+                                      (let ((urls (objc-call window "URLs")))
+                                        (loop for i from 0 below (objc-call urls "count" :uint)
+                                              for url = (objc-call urls "objectAtIndex:" :uint i)
+                                              collect (ensure-url-path url filter)))
+                                      (ensure-url-path (objc-call window "URL") filter))
+                                  T))))
+                         (when owner
+                           (unwind-protect
+                                (progn
+                                  (objc-call window "orderOut:" :pointer (cffi:null-pointer) :void)
+                                  (objc-call owner "removeChildWindow:" :pointer window :void)
+                                  (objc-call parent "addChildWindow:ordered:" :pointer window :long 1 :void)
+                                  (unless (zerop (objc-call owner "isVisible" :char))
+                                    (objc-call owner "makeKeyAndOrderFront:" :pointer (cffi:null-pointer) :void)))
+                             (objc-call parent "release" :void)
+                             (objc-call owner "release" :void)))))))
               (objc-call app "setActivationPolicy:" NSApplicationActivationPolicy prior-policy :bool)
               (set-uncaught-exception-handler prior-handler))))))))

@@ -11,7 +11,7 @@
       *default-backend*
       (setf *default-backend* (determine-default-backend))))
 
-(defun choose-color (&rest args &key title default backend full-open prevent-full-open)
+(defun choose-color (&rest args &key title default backend full-open prevent-full-open owner)
   "Open the native colour picker. Returns (values COLOR SUCCESS).
 
 COLOR is a list (R G B) of single-floats in [0,1], or NIL.
@@ -19,8 +19,9 @@ DEFAULT, when given, is a list (R G B) to preselect.
 FULL-OPEN T shows the expanded picker; NIL shows the basic palette only.
 PREVENT-FULL-OPEN T hides the expand button (palette-only).
 FULL-OPEN/PREVENT-FULL-OPEN apply to the win32 and macos backends.
+OWNER is NIL or a native Win32 HWND/macOS NSWindow pointer.
 If no BACKEND is specified, *DEFAULT-BACKEND* is used."
-  (declare (ignore title default full-open prevent-full-open))
+  (declare (ignore title default full-open prevent-full-open owner))
   (restart-case (apply #'choose-color-with (or backend (default-backend)) args)
     (continue ()
       :report "Cancel the call by returning NIL"
@@ -34,7 +35,7 @@ If no BACKEND is specified, *DEFAULT-BACKEND* is used."
             (make-instance class))))
 
 (defgeneric finalize (backend))
-(defgeneric choose-color-with (backend &key title default &allow-other-keys))
+(defgeneric choose-color-with (backend &key title default owner &allow-other-keys))
 
 (defmethod finalize ((backend symbol))
   (finalize (find-class backend)))
